@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="include\exception.h">
+      <Filter>ヘッダー</Filter>
+    </ClInclude>
+    <ClInclude Include="include\figure.h">
+      <Filter>ヘッダー</Filter>
+    </ClInclude>
+    <ClInclude Include="include\model.h">
+      <Filter>ヘッダー</Filter>
+    </ClInclude>
+    <ClInclude Include="include\primitive.h">
+      <Filter>ヘッダー</Filter>
+    </ClInclude>
+    <ClInclude Include="include\sprite.h">
+      <Filter>ヘッダー</Filter>
+    </ClInclude>
+    <ClInclude Include="include\text.h">
+      <Filter>ヘッダー</Filter>
+    </ClInclude>
+    <ClInclude Include="include\text_resource.h">
+      <Filter>ヘッダー</Filter>
+    </ClInclude>
+    <ClInclude Include="include\base.h">
+      <Filter>ヘッダー</Filter>
+    </ClInclude>
+    <ClInclude Include="include\camera.h">
+      <Filter>ヘッダー</Filter>
+    </ClInclude>
+    <ClInclude Include="include\acex_draw_ex.h">
+      <Filter>ヘッダー</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="ヘッダー">
+      <UniqueIdentifier>{c34efc97-e458-4dbf-b4b3-3f14662cd362}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="acex_draw_ex.cpp" />
+  </ItemGroup>
+</Project>
