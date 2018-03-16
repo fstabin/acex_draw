@@ -152,39 +152,7 @@ namespace acex {
 				if (!Draw->CreateView(tex2d, acex::draw::VIEW_RENDER_RESOURCE, reinterpret_cast<void**>(rsorresource)))return false;
 				return true;
 			}
-			inline bool CreateIRenderResourceM(acex::draw::IDraw* Draw, UINT32 x, UINT32 y, const acex::draw::COLOR*data, acex::draw::IRenderResource** out) {
-				acex::draw::RESOURCE_DESC rdesc;
-				acex::draw::TEXTURE2D_DESC cdesc;
-				acs::SIACS<acex::draw::ITexture2D> tex2d;
-				cdesc.Width = x;
-				cdesc.Height = y;
-				cdesc.useflag = acex::draw::TEXUSE_RENDER_RESOURCE;
-				rdesc.type = acex::draw::RESOURCE_TYPE_TEXTURE2D;
-				rdesc.AccessFlag = acex::draw::RESOURCE_ACCESS_NONE;
-				rdesc.desc = &cdesc;
-				if (!Draw->CreateResource(rdesc, data, reinterpret_cast<void**>(&tex2d)))return false;
-				if (!Draw->CreateView(tex2d, acex::draw::VIEW_RENDER_RESOURCE, reinterpret_cast<void**>(out)))return false;
-				return true;
-			}
-			inline bool CreateIRenderResourceP(acex::draw::IDraw* Draw, acs::image::IioImage* loader, const wchar_t* pass, acex::draw::IRenderResource** out) {
-				acs::SIACS<acs::image::IImageData> img;
-				if (!loader->CleateImageFromFilename(pass, &img))return false;
-				acs::image::IMAGE_STATE state;
-				if (!img->GetState(&state))return false;
-				acex::draw::RESOURCE_DESC rdesc;
-				acex::draw::TEXTURE2D_DESC cdesc;
-				acs::SIACS<acex::draw::ITexture2D> tex2d;
-				cdesc.Height = state.Height;
-				cdesc.Width = state.Width;
-				cdesc.useflag = acex::draw::TEXUSE_RENDER_RESOURCE;
-				rdesc.type = acex::draw::RESOURCE_TYPE_TEXTURE2D;
-				rdesc.AccessFlag = acex::draw::RESOURCE_ACCESS_NONE;
-				rdesc.desc = &cdesc;
-				if (!Draw->CreateResource(rdesc, img->GetData(), reinterpret_cast<void**>(&tex2d)))return false;
-				if (!Draw->CreateView(tex2d, acex::draw::VIEW_RENDER_RESOURCE, reinterpret_cast<void**>(out)))return false;
-				return true;
-			}
-			inline bool CreateITexture2D(acex::draw::IDraw* Draw, acs::image::IioImage* loader, const wchar_t* pass, acex::draw::ITexture2D** out) {
+			inline bool CreateITexture2DP(acex::draw::IDraw* Draw, acs::image::IioImage* loader, const wchar_t* pass, acex::draw::ITexture2D** out) {
 				acs::SIACS<acs::image::IImageData> img;
 				if (!loader->CleateImageFromFilename(pass, &img))return false;
 				acs::image::IMAGE_STATE state;
@@ -204,7 +172,28 @@ namespace acex {
 				if (!Draw->CreateView(tex2d, acex::draw::VIEW_RENDER_RESOURCE, reinterpret_cast<void**>(out)))return false;
 				return true;
 			}
-
+			inline bool CreateIRenderResourceM(acex::draw::IDraw* Draw, UINT32 x, UINT32 y, const acex::draw::COLOR*data, acex::draw::IRenderResource** out) {
+				acex::draw::RESOURCE_DESC rdesc;
+				acex::draw::TEXTURE2D_DESC cdesc;
+				acs::SIACS<acex::draw::ITexture2D> tex2d;
+				cdesc.Width = x;
+				cdesc.Height = y;
+				cdesc.useflag = acex::draw::TEXUSE_RENDER_RESOURCE;
+				rdesc.type = acex::draw::RESOURCE_TYPE_TEXTURE2D;
+				rdesc.AccessFlag = acex::draw::RESOURCE_ACCESS_NONE;
+				rdesc.desc = &cdesc;
+				if (!Draw->CreateResource(rdesc, data, reinterpret_cast<void**>(&tex2d)))return false;
+				if (!CreateIRenderResource(Draw, tex2d, out))return false;
+				return true;
+			}
+			inline bool CreateIRenderResourceP(acex::draw::IDraw* Draw, acs::image::IioImage* loader, const wchar_t* pass, acex::draw::IRenderResource** out) {
+				acs::SIACS<acs::image::IImageData> img;
+				acs::SIACS<acex::draw::ITexture2D> tex2d;
+				if (!CreateITexture2DP(Draw, loader, pass, &tex2d))return false;
+				if (!CreateIRenderResource(Draw, tex2d, out))return false;
+				return true;
+			}
+						
 			inline bool CreateIIndex(
 				acex::draw::IIndex** _returnVal,
 				acex::draw::IDraw* Draw,

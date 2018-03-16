@@ -75,9 +75,9 @@ public: virtual void ACS_TCALL GetDesc(type* out) final {*out = desc;};
 virtual bool Map(void** d)final{	return SUCCEEDED(Buf->Map(0, 0, d));}\
 virtual void Unmap()final{Buf->Unmap(0,0);}
 
-ACS_EXCEPTION_DEF(VIEW_CREATE_ERR, "VIEW_CREATE_ERR");
-ACS_EXCEPTION_DEF(SCREEN_TARGET_CREATE_ERR, "SCREEN_TARGET_CREATE_ERR");
-ACS_EXCEPTION_DEF(RESOURCE_CREATE_ERR, "RESOURCE_CREATE_ERR");
+ACS_EXCEPTION_DEF(VIEW_CREATE_ERR, "VIEW_CREATE_ERR\n");
+ACS_EXCEPTION_DEF(SCREEN_TARGET_CREATE_ERR, "SCREEN_TARGET_CREATE_ERR\n");
+ACS_EXCEPTION_DEF(RESOURCE_CREATE_ERR, "RESOURCE_CREATE_ERR\n");
 
 namespace {
 	DXGI_FORMAT defaultColorFomat = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -707,8 +707,12 @@ namespace  acex{
 				CComPtr<ID3D12Resource> UpdBuffer;
 				CComPtr<ID3D12Resource> Texture;
 				HRESULT hr;
-			
-				//フォーマット設定
+				
+				
+				//フォーマット設定---
+				
+				//適応するフォーマットなし
+				if ((desc.useflag & TEXUSE_DEPTHSTENCIL) && (desc.useflag & TEXUSE_TARGET))throw(RESOURCE_CREATE_ERR());
 				DXGI_FORMAT fmt;
 				if (desc.useflag & TEXUSE_DEPTHSTENCIL) {
 					fmt = defaultDepthMakeFomat;
@@ -719,9 +723,9 @@ namespace  acex{
 					Fomat = defaultColorFomat;
 				}
 
-				//リソースの初期ステータス設定
+				//リソースの初期ステータス設定---
 				if (desc.useflag & TEXUSE_DEPTHSTENCIL) {
-					mState = D3D12_RESOURCE_STATE_COMMON | D3D12_RESOURCE_STATE_DEPTH_WRITE;
+					mState =  D3D12_RESOURCE_STATE_DEPTH_WRITE;
 				}
 				else if (desc.useflag & TEXUSE_TARGET) {
 					if (desc.useflag & TEXUSE_RENDER_RESOURCE) {
@@ -769,13 +773,13 @@ namespace  acex{
 							&UpdBufferBytes);
 					}
 
-					//使用可能テクスチャ
+					//GPUアクセス用テクスチャ作成
 					if (pdesc.AccessFlag == RESOURCE_ACCESS_NONE) {
 						prop.Type = D3D12_HEAP_TYPE_DEFAULT;
 						prop.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
 						prop.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 						prop.CreationNodeMask = 1;
-						prop.VisibleNodeMask = 0;
+						prop.VisibleNodeMask = 1;
 						float col[4] = { 0,0,0,0 };
 						D3D12_CLEAR_VALUE clv = {};
 						D3D12_CLEAR_VALUE *optcv = nullptr;
@@ -794,9 +798,9 @@ namespace  acex{
 							optcv, IID_PPV_ARGS(&Texture));
 						if (FAILED(hr))throw(RESOURCE_CREATE_ERR());
 					}
-					//アップロード用バッファ
-					if (( pSource || (pdesc.AccessFlag & RESOURCE_ACCESS_WRITE)) &&
-						!(desc.useflag & TEXUSE_DEPTHSTENCIL) && !(desc.useflag & TEXUSE_TARGET)) {
+					//CPU->GPUアップロード用バッファ作成
+					if ((pSource || (pdesc.AccessFlag & RESOURCE_ACCESS_WRITE)) &&
+						!(desc.useflag & TEXUSE_DEPTHSTENCIL)) {
 						rdesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 						rdesc.Width = UpdBufferBytes;
 						rdesc.Height = 1;
@@ -807,30 +811,30 @@ namespace  acex{
 						prop.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
 						prop.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 						prop.CreationNodeMask = 1;
-						prop.VisibleNodeMask = 0;
+						prop.VisibleNodeMask = 1;
 						hr = pDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rdesc,
-							D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&UpdBuffer));
+							mState, nullptr, IID_PPV_ARGS(&UpdBuffer));
 						if (FAILED(hr))throw(RESOURCE_CREATE_ERR());
 					}
 				}
 
-				//書き込み
-				if (pSource && !(desc.useflag & TEXUSE_DEPTHSTENCIL) && !(desc.useflag & TEXUSE_TARGET)) {
-					//アップロード用バッファに書き込み
-					byte * data;
-					hr = UpdBuffer->Map(0, 0, (void**)&data);
+				//アップロード用バッファにデータ書き込み
+				if (pSource && UpdBuffer) {
+					byte * buffer;
+					hr = UpdBuffer->Map(0, 0, (void**)&buffer);
 					if (FAILED(hr))throw(RESOURCE_CREATE_ERR());
 					const byte* source = static_cast<const byte*>(pSource);
 					for (UINT i = 0; i < RowCount; i++)
 					{
-						memcpy(data, source, static_cast<size_t>(RowSize));
-						data += pPlace.Footprint.RowPitch;
+						memcpy(buffer, source, static_cast<size_t>(RowSize));
+						buffer += pPlace.Footprint.RowPitch;
 						source += RowSize;
 					}
 					UpdBuffer->Unmap(0, 0);
 					if (FAILED(hr))throw(RESOURCE_CREATE_ERR());
-					//使用テクスチャに書き込んだ内容をコピー
-					if (pdesc.AccessFlag == RESOURCE_ACCESS_NONE) {
+
+					//GPU用バッファにに書き込んだ内容をコピー
+					if (Texture) {
 						Draw->WaitDrawDone();
 						HRESULT hr;
 						// コマンドアロケータをリセット
@@ -877,11 +881,14 @@ namespace  acex{
 					}
 				}
 
-				if (pdesc.AccessFlag == RESOURCE_ACCESS_NONE) {
+				if (Texture) {
 					Buf = Texture;
 				}
-				else {
+				else if(UpdBuffer){
 					Buf = UpdBuffer;
+				}
+				else {
+					throw(RESOURCE_CREATE_ERR());
 				}
 			}
 
@@ -937,7 +944,7 @@ namespace  acex{
 			}
 		};
 
-		inline D3D_PRIMITIVE_TOPOLOGY CVPRIM(PRIMITIVE_TOPOLOGY tp)throw() {
+		inline ::D3D_PRIMITIVE_TOPOLOGY CVPRIM(PRIMITIVE_TOPOLOGY tp)throw() {
 			switch (tp)
 			{
 			case PT_TRIANGLELIST:
@@ -1227,11 +1234,11 @@ namespace  acex{
 							D3D12_ROOT_PARAMETER rootParameters[4];
 							size_t i = 0;
 
-							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;									// このDescriptorRangeは定数バッファ
-							ranges[i].NumDescriptors = 1;															// Descriptorは1つ
-							ranges[i].BaseShaderRegister = 0;														// シェーダ側の開始インデックスは0番
-							ranges[i].RegisterSpace = 0;															// TODO: SM5.1からのspaceだけど、どういうものかよくわからない
-							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;		// TODO: とりあえず-1を入れておけばOK？
+							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;					
+							ranges[i].NumDescriptors = 1;														
+							ranges[i].BaseShaderRegister = 0;													
+							ranges[i].RegisterSpace = 0;														
+							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;	
 							i++;
 							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 							ranges[i].NumDescriptors = 1;
@@ -1258,7 +1265,7 @@ namespace  acex{
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 							i++;
 							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
+							rootParameters[i].DescriptorTable.NumDescriptorRanges = 3;
 							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 							i++;
@@ -2240,13 +2247,12 @@ namespace  acex{
 				{
 					auto p0 = dynamic_cast<MCamPro*>(data->campro);
 					auto p1 = dynamic_cast<MLight*>(data->light);
-					static const UINT DcCount = 1;
-					ID3D12DescriptorHeap* pCB = p0->GetHEAP();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(0, pCB->GetGPUDescriptorHandleForHeapStart());
-					pCB = p1->GetHEAP();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(1, pCB->GetGPUDescriptorHandleForHeapStart());
+					static const UINT DcCount = 2;
+					ID3D12DescriptorHeap* pCB[DcCount] = { p0->GetHEAP(), p1->GetHEAP() };
+					comlist->SetDescriptorHeaps(1, pCB);
+					comlist->SetGraphicsRootDescriptorTable(0, pCB[0]->GetGPUDescriptorHandleForHeapStart());
+					comlist->SetDescriptorHeaps(1, &pCB[1]);
+					comlist->SetGraphicsRootDescriptorTable(1, pCB[1]->GetGPUDescriptorHandleForHeapStart());
 				}
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, 0, 0, 0);
