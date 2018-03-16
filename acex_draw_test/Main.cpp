@@ -199,9 +199,6 @@ int App::Main::Func() {
 		
 	while (AppBase::AppWait(0)) {
 		{
-			draw->WaitDrawDone();
-			draw->Present(1);
-
 			static float cx = -10;
 			static float cy = 10;
 			if (AppBase::CheckKeyDown(VK_UP)) {
@@ -256,9 +253,10 @@ int App::Main::Func() {
 				acex::draw::ITarget* d[] = { screenTarget };
 
 				//Å¬•`‰æ
-				drawer->SetTargets(1, d, nullptr);
-				ex::RenderDefault(drawer,1, 4,4, square.getPT(), square.getIIndex(), square.getIVPos(), color, world2d);
-
+				drawer->SetTargets(1, d, screenDepth);
+				//ex::RenderDefault(drawer,1, 4,4, square.getPT(), square.getIIndex(), square.getIVPos(), color, world2d);
+				//ex::RenderWorld(drawer, 1, 4, 4, square.getPT(), square.getIIndex(), square.getIVPos(), color, world, campro);
+				ex::RenderWorldTex(drawer, 1, 4, 4, square.getPT(), TS_POINT, square.getIIndex(), square.getIVPos(),square.getVUV(), world, texstate, campro, rRes);
 				//‰eƒeƒXƒg
 				/*
 				drawer->SetTargets(1, d, ShadowD);
@@ -268,6 +266,7 @@ int App::Main::Func() {
 				acex::draw::ex::RenderDepth(drawer, 1, 36, acex::draw::PT_TRIANGLELIST,
 					boxi, boxvp, boxwor, LightCP);
 				
+				
 				drawer->SetTargets(1, d, screenDepth);
 				drawer->ClearTarget(0, clearCol);
 				drawer->ClearDepthStencill();
@@ -275,13 +274,18 @@ int App::Main::Func() {
 					square.getIIndex(), square.getIVPos(), color, iNormal, world, campro, iLight, LightCP, ShadowR);
 				acex::draw::ex::RenderShadowed(drawer, 1, 36, acex::draw::PT_TRIANGLELIST,
 					 boxi, boxvp, boxvc, boxnor, boxwor, campro, iLight, LightCP, ShadowR);
-
+				
 				drawer->SetTargets(1, d, nullptr);
-
-				Sptex.Draw(drawer);
 				*/
+				//Sptex.Draw(drawer);
+				
 			}
-			draw->WaitDrawDone();
+		
+			draw->Present(0);
+			if (false == draw->isEnable()) {
+				OutputDebugStringA("Draw interface disabled...\n");
+				return 0;
+			}
 		};
 	}
 

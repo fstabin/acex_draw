@@ -8,5 +8,5 @@ SamplerState  sampler_0 : register(s0);
 float4 main(PSInput In) : SV_TARGET0
 {
 	float4 col = tex.Sample(sampler_0,In.uv);
-	return col;
+	return float4(1,1,1,1);
 }

@@ -297,6 +297,8 @@ namespace  acex {
 
 			virtual bool Present(int)throw() = 0;
 			virtual void WaitDrawDone()throw() = 0;
+
+			virtual bool isEnable()throw() = 0;
 		};
 		enum LIB_MODE : uintValue {
 			LIB_MODE_DX12 = 0,

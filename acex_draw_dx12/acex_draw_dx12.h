@@ -1,6 +1,6 @@
 #pragma once
 #include "stdafx.h"
-#define AT_DRAW_DLL_EXPORT
+#define ACEX_DRAW_DLL_EXPORT
 #include "acex_draw\include\acex_draw.h"
 #include <dxgi1_5.h>
 #include <D3d12.h>
@@ -679,7 +679,7 @@ namespace  acex{
 			uint32_t access;
 			D3D12_PLACED_SUBRESOURCE_FOOTPRINT pPlace;
 
-			D3D12_RESOURCE_STATES lstate;
+			D3D12_RESOURCE_STATES mState;
 		public:
 			MTexture2D(
 				IDraw* Draw,
@@ -741,7 +741,19 @@ namespace  acex{
 							&RowSize,
 							&UpdBufferBytes);
 					}
-
+					D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_GENERIC_READ;
+					if (desc.useflag & TEXUSE_DEPTHSTENCIL) {
+						state = D3D12_RESOURCE_STATE_COMMON | D3D12_RESOURCE_STATE_DEPTH_WRITE;
+					}
+					else if (desc.useflag & TEXUSE_TARGET) {
+						if (desc.useflag & TEXUSE_RENDER_RESOURCE) {
+							state = D3D12_RESOURCE_STATE_GENERIC_READ;
+						}
+						else {
+							state = D3D12_RESOURCE_STATE_RENDER_TARGET;
+						}
+					}
+					mState = state;
 					//使用可能テクスチャ
 					if (pdesc.AccessFlag == RESOURCE_ACCESS_NONE) {
 						prop.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -752,25 +764,16 @@ namespace  acex{
 						float col[4] = { 0,0,0,0 };
 						D3D12_CLEAR_VALUE clv = {};
 						D3D12_CLEAR_VALUE *optcv = nullptr;
-						D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_GENERIC_READ;
 						if (desc.useflag & TEXUSE_DEPTHSTENCIL) {
 							clv.Format = Fomat;
 							clv.DepthStencil.Depth = 1;
 							optcv = &clv;
-							state = D3D12_RESOURCE_STATE_COMMON | D3D12_RESOURCE_STATE_DEPTH_WRITE;
 						}
 						else if (desc.useflag & TEXUSE_TARGET) {
 							clv.Format = Fomat;
 							clv.Color[0] = clv.Color[1] = clv.Color[2] = clv.Color[3] = 0;
-							optcv = &clv;
-							if (desc.useflag & TEXUSE_RENDER_RESOURCE) {
-								state = D3D12_RESOURCE_STATE_GENERIC_READ;
-							}
-							else {
-								state = D3D12_RESOURCE_STATE_RENDER_TARGET;
-							}					
+							optcv = &clv;	
 						}
-						lstate = state;
 						hr = pDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rdesc,
 							state,
 							optcv, IID_PPV_ARGS(&Texture));
@@ -827,7 +830,7 @@ namespace  acex{
 						barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 						barrier.Transition.pResource = Texture;
 						barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-						barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_GENERIC_READ;
+						barrier.Transition.StateBefore = mState;
 						barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
 						comlist->ResourceBarrier(1, &barrier);
 
@@ -844,7 +847,7 @@ namespace  acex{
 						comlist->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 
 						barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-						barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
+						barrier.Transition.StateAfter = mState;
 						comlist->ResourceBarrier(1, &barrier);
 
 
@@ -864,7 +867,6 @@ namespace  acex{
 				}
 				else {
 					Buf = UpdBuffer;
-					lstate = D3D12_RESOURCE_STATE_GENERIC_READ;
 				}
 			}
 
@@ -911,8 +913,8 @@ namespace  acex{
 			GET_BUF_DEF(Buf);
 
 			D3D12_RESOURCE_STATES LastState(D3D12_RESOURCE_STATES ls) {
-				auto out = lstate;
-				lstate = ls;
+				auto out = mState;
+				mState = ls;
 				return out;
 			}
 			virtual ID3D12Resource* Resource() {
@@ -1110,9 +1112,9 @@ namespace  acex{
 					auto CreateRoot = [&](D3D12_ROOT_SIGNATURE_DESC& rsdesc ,ID3D12RootSignature** root) {
 						CComPtr<ID3DBlob> blob;
 						hr = D3D12SerializeRootSignature(&rsdesc, D3D_ROOT_SIGNATURE_VERSION_1, &blob, nullptr);
-						if (FAILED(hr))throw(DRAW_INIT_ERR());
+						if (hr != S_OK)throw(DRAW_INIT_ERR());
 						hr = d3device->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(root));
-						if (FAILED(hr))throw(DRAW_INIT_ERR());
+						if (hr != S_OK)throw(DRAW_INIT_ERR());
 						blob.Release();
 					};
 					auto CreatePSOA_1 = [&](ID3D12PipelineState** out, D3D12_GRAPHICS_PIPELINE_STATE_DESC& gps) ->void {
@@ -1751,6 +1753,11 @@ namespace  acex{
 			}
 			virtual ~MDraw() {
 				WaitDrawDone();
+			}
+
+			bool isEnable()throw() {
+				if (nullptr == d3device)return false;
+				return SUCCEEDED(d3device->GetDeviceRemovedReason());
 			}
 
 			bool ACS_TCALL GetScreenTarget(ITarget** t) {
