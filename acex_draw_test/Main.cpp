@@ -94,6 +94,7 @@ int App::Main::Func() {
 	acex::draw::INIT_DESC ini;
 	ini.hWnd = AppBase::hMainWindow;
 	ini.Size = { static_cast<acs::uint>(ClientWidth) ,static_cast<acs::uint>(ClientHeight) };
+	ini.useWarpDevice = false;
 	acs::SIACS<acex::draw::IDraw> draw;
 	if (!acex::draw::CreateDraw(&ini, &draw))return -1;
 	acex::draw::RESOURCE_DESC rdesc;
@@ -197,7 +198,7 @@ int App::Main::Func() {
 
 	AppBase::ScreenSetup();
 		
-	while (AppBase::AppWait(0)) {
+	while (AppBase::AppWait(10)) {
 		{
 			static float cx = -10;
 			static float cy = 10;
@@ -216,6 +217,12 @@ int App::Main::Func() {
 
 			static float h = 0;
 			//h += 0.05;
+
+			draw->Present(0);
+			if (false == draw->isEnable()) {
+				OutputDebugStringA("Draw interface disabled...\n");
+				return 0;
+			}
 
 			float fh = h;
 			{
@@ -254,9 +261,11 @@ int App::Main::Func() {
 
 				//Å¬•`‰æ
 				drawer->SetTargets(1, d, screenDepth);
+				drawer->ClearDepthStencill();
 				//ex::RenderDefault(drawer,1, 4,4, square.getPT(), square.getIIndex(), square.getIVPos(), color, world2d);
 				//ex::RenderWorld(drawer, 1, 4, 4, square.getPT(), square.getIIndex(), square.getIVPos(), color, world, campro);
-				ex::RenderWorldTex(drawer, 1, 4, 4, square.getPT(), TS_POINT, square.getIIndex(), square.getIVPos(),square.getVUV(), world, texstate, campro, rRes);
+				ex::RenderWorldTex(drawer, 1, 4, 4, square.getPT(), TS_LINEAR, square.getIIndex(), square.getIVPos(),square.getVUV(), world, texstate, campro, rRes);
+				
 				//‰eƒeƒXƒg
 				/*
 				drawer->SetTargets(1, d, ShadowD);
@@ -281,13 +290,8 @@ int App::Main::Func() {
 				
 			}
 		
-			draw->Present(0);
-			if (false == draw->isEnable()) {
-				OutputDebugStringA("Draw interface disabled...\n");
-				return 0;
-			}
 		};
 	}
-
+	draw->WaitDrawDone();
 	return 0;
 }

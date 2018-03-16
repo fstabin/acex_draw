@@ -275,6 +275,7 @@ namespace  acex {
 		struct INIT_DESC {
 			HWND hWnd;
 			SIZE Size;
+			bool useWarpDevice;
 		};
 #endif
 

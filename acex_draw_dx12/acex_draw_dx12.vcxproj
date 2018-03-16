@@ -99,12 +99,12 @@
     <FxCompile>
       <AdditionalIncludeDirectories>
       </AdditionalIncludeDirectories>
-      <DisableOptimizations>true</DisableOptimizations>
       <EnableDebuggingInformation>false</EnableDebuggingInformation>
       <ShaderModel>5.0</ShaderModel>
       <VariableName>%(Filename)</VariableName>
       <HeaderFileOutput>%(Filename).h</HeaderFileOutput>
       <ObjectFileOutput />
+      <DisableOptimizations>false</DisableOptimizations>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -125,12 +125,12 @@
     <FxCompile>
       <AdditionalIncludeDirectories>
       </AdditionalIncludeDirectories>
-      <DisableOptimizations>true</DisableOptimizations>
       <EnableDebuggingInformation>false</EnableDebuggingInformation>
       <ShaderModel>5.0</ShaderModel>
       <VariableName>%(Filename)</VariableName>
       <HeaderFileOutput>%(Filename).h</HeaderFileOutput>
       <ObjectFileOutput />
+      <DisableOptimizations>false</DisableOptimizations>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -158,7 +158,6 @@
       <VariableName>%(Filename)</VariableName>
       <HeaderFileOutput>%(Filename).h</HeaderFileOutput>
       <ObjectFileOutput />
-      <DisableOptimizations>true</DisableOptimizations>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -186,7 +185,6 @@
       <VariableName>%(Filename)</VariableName>
       <HeaderFileOutput>%(Filename).h</HeaderFileOutput>
       <ObjectFileOutput />
-      <DisableOptimizations>true</DisableOptimizations>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

@@ -85,6 +85,7 @@ namespace {
 	DXGI_FORMAT defaultDepthResourceFomat = DXGI_FORMAT_R32_FLOAT;
 	DXGI_FORMAT defaultDepthFomat = DXGI_FORMAT_D32_FLOAT;
 
+	//アップロード用バッファ作成(インデックス,頂点,インスタンスバッファ)
 	void CreateBuffer(
 		ID3D12Device* pDevice,
 		uint32_t Size,
@@ -113,17 +114,33 @@ namespace {
 			IID_PPV_ARGS(Buf));
 		if FAILED(hr)throw(RESOURCE_CREATE_ERR());
 	}
+
 }
 
 namespace  acex{
 	namespace draw{
 		struct MTexture :acs::IACS {
+			//out 前回の状態 in 遷移する状態
 			virtual D3D12_RESOURCE_STATES LastState(D3D12_RESOURCE_STATES) = 0;
 			virtual ID3D12Resource* Resource() = 0;
 		};
 		struct MView :acs::IACS {
 			virtual MTexture* GetTexture() = 0;
 		};
+
+		// 前回の状態と遷移する状態が違うときバリアをセット
+		static void BarrierSet(ID3D12GraphicsCommandList* comlist, D3D12_RESOURCE_STATES After, MTexture* texture) {
+			D3D12_RESOURCE_BARRIER barrier;
+			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;// バリアはリソースの状態遷移に対して設置
+			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			barrier.Transition.pResource = texture->Resource();		// リソースは描画ターゲット
+			barrier.Transition.StateBefore = texture->LastState(After);
+			barrier.Transition.StateAfter = After;		// 遷移後は描画ターゲット
+			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			if (barrier.Transition.StateAfter != barrier.Transition.StateBefore) {
+				comlist->ResourceBarrier(1, &barrier);
+			}
+		}
 
 		/* ----- view ----- */
 		class MRenderResource :public IRenderResource,public MView {
@@ -171,7 +188,7 @@ namespace  acex{
 
 		class MDefaultTarget :public MTarget {
 			CComPtr<ID3D12DescriptorHeap> Heap;
-				acs::SIACS<MTexture> PTex;
+				acs::SIACS<MTexture> PTex;//リソース
 				const MTARGET_INIT_DESC init_desc;
 				D3D12_CPU_DESCRIPTOR_HANDLE hnd;
 		public:
@@ -339,7 +356,7 @@ namespace  acex{
 		class MDepthStencil :public IDepthStencil,public MView{
 			ACS_IACS_CHILD;
 			CComPtr<ID3D12DescriptorHeap> Heap;
-			acs::SIACS<MTexture> PTex;
+			acs::SIACS<MTexture> PTex;//リソース
 		public:
 			MDepthStencil(ID3D12Device* pDevice, MTexture* parent, ID3D12Resource* Resource, DXGI_FORMAT fomat) :PTex(parent) {
 				HRESULT hr;
@@ -544,20 +561,17 @@ namespace  acex{
 				desc = *_desc;
 				HRESULT hr;
 				{
-					// 定数バッファ用のDescriptorHeapを作成
+					// 定数バッファ用DescriptorHeap作成
 					{
 						D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-						desc.NumDescriptors = 1;		// 定数バッファは1つ
-						desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;		// CBV, SRV, UAVはすべて同じタイプで作成する
-																				// DescriptorHeap内にCBV, SRV, UAVは混在可能
-																				// DescriptorHeapのどの範囲をどのレジスタに割り当てるかはルートシグネチャ作成時のRangeとParameterで決定する
+						desc.NumDescriptors = 1;		// 定数バッファ1つ
+						desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;	
 						desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;	// シェーダからアクセスする
 
 						hr = pDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&Heap));
 						if FAILED(hr)throw(RESOURCE_CREATE_ERR());
 					}
-					// 定数バッファリソースを作成
-					// 実際の定数バッファはここに書き込んでシェーダから参照される
+					// 定数バッファリソース作成
 					{
 						D3D12_HEAP_PROPERTIES prop;
 						prop.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -614,13 +628,11 @@ namespace  acex{
 				desc = *_desc;
 				HRESULT hr;
 				{
-					// 定数バッファ用のDescriptorHeapを作成
+					// 定数バッファ用DescriptorHeap作成
 					{
 						D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-						desc.NumDescriptors = 1;		// 定数バッファは1つ
-						desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;		// CBV, SRV, UAVはすべて同じタイプで作成する
-																				// DescriptorHeap内にCBV, SRV, UAVは混在可能
-																				// DescriptorHeapのどの範囲をどのレジスタに割り当てるかはルートシグネチャ作成時のRangeとParameterで決定する
+						desc.NumDescriptors = 1;		// 定数バッファ1つ
+						desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;	
 						desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;	// シェーダからアクセスする
 
 						hr = pDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&Heap));
@@ -696,8 +708,8 @@ namespace  acex{
 				CComPtr<ID3D12Resource> Texture;
 				HRESULT hr;
 			
+				//フォーマット設定
 				DXGI_FORMAT fmt;
-
 				if (desc.useflag & TEXUSE_DEPTHSTENCIL) {
 					fmt = defaultDepthMakeFomat;
 					Fomat = defaultDepthFomat;
@@ -705,7 +717,22 @@ namespace  acex{
 				else {
 					fmt = defaultColorFomat;
 					Fomat = defaultColorFomat;
+				}
 
+				//リソースの初期ステータス設定
+				if (desc.useflag & TEXUSE_DEPTHSTENCIL) {
+					mState = D3D12_RESOURCE_STATE_COMMON | D3D12_RESOURCE_STATE_DEPTH_WRITE;
+				}
+				else if (desc.useflag & TEXUSE_TARGET) {
+					if (desc.useflag & TEXUSE_RENDER_RESOURCE) {
+						mState = D3D12_RESOURCE_STATE_GENERIC_READ;
+					}
+					else {
+						mState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+					}
+				}
+				else {
+					mState = D3D12_RESOURCE_STATE_GENERIC_READ;
 				}
 
 				UINT RowCount;
@@ -741,19 +768,7 @@ namespace  acex{
 							&RowSize,
 							&UpdBufferBytes);
 					}
-					D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_GENERIC_READ;
-					if (desc.useflag & TEXUSE_DEPTHSTENCIL) {
-						state = D3D12_RESOURCE_STATE_COMMON | D3D12_RESOURCE_STATE_DEPTH_WRITE;
-					}
-					else if (desc.useflag & TEXUSE_TARGET) {
-						if (desc.useflag & TEXUSE_RENDER_RESOURCE) {
-							state = D3D12_RESOURCE_STATE_GENERIC_READ;
-						}
-						else {
-							state = D3D12_RESOURCE_STATE_RENDER_TARGET;
-						}
-					}
-					mState = state;
+
 					//使用可能テクスチャ
 					if (pdesc.AccessFlag == RESOURCE_ACCESS_NONE) {
 						prop.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -775,7 +790,7 @@ namespace  acex{
 							optcv = &clv;	
 						}
 						hr = pDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &rdesc,
-							state,
+							mState,
 							optcv, IID_PPV_ARGS(&Texture));
 						if (FAILED(hr))throw(RESOURCE_CREATE_ERR());
 					}
@@ -981,8 +996,8 @@ namespace  acex{
 			CComPtr<ID3D12DescriptorHeap> AnisotropicSampler;
 			CHandle DrawDoneEvent;
 
-			CComPtr<ID3D12RootSignature> rootsign;
-			CComPtr<ID3D12RootSignature> root_world;
+			CComPtr<ID3D12RootSignature> rootsign;//default
+			CComPtr<ID3D12RootSignature> root_world;//world
 			CComPtr<ID3D12RootSignature> root_worldtex;
 			CComPtr<ID3D12RootSignature> root_norworld;
 			CComPtr<ID3D12RootSignature> root_norworldtex;
@@ -1031,7 +1046,8 @@ namespace  acex{
 						IDXGIAdapter1* pAdapter;
 						hr = CreateDXGIFactory(IID_PPV_ARGS(&DxFact));
 						if (FAILED(hr))throw(DRAW_INIT_ERR());
-						GetHardwareAdapter(DxFact, &pAdapter, D3D_FEATURE_LEVEL_11_0);
+						if(desc->useWarpDevice)DxFact->EnumWarpAdapter(IID_PPV_ARGS(&pAdapter));
+						else GetHardwareAdapter(DxFact, &pAdapter, D3D_FEATURE_LEVEL_11_0);
 						if (!pAdapter)throw(DRAW_INIT_ERR());
 						hr = D3D12CreateDevice(
 							pAdapter,
@@ -1144,11 +1160,11 @@ namespace  acex{
 							D3D12_DESCRIPTOR_RANGE ranges[3];
 							D3D12_ROOT_PARAMETER rootParameters[3];
 
-							ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;									// このDescriptorRangeは定数バッファ
-							ranges[0].NumDescriptors = 1;															// Descriptorは1つ
-							ranges[0].BaseShaderRegister = 0;														// シェーダ側の開始インデックスは0番
-							ranges[0].RegisterSpace = 0;															// TODO: SM5.1からのspaceだけど、どういうものかよくわからない
-							ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;		// TODO: とりあえず-1を入れておけばOK？
+							ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;				// Descriptorの種類
+							ranges[0].NumDescriptors = 1;																// Descriptorの数
+							ranges[0].BaseShaderRegister = 0;														// シェーダ側の開始インデックス
+							ranges[0].RegisterSpace = 0;
+							ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
 							ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 							ranges[1].NumDescriptors = 1;
@@ -1876,19 +1892,6 @@ namespace  acex{
 			RENDER_MODE LastMode = RM_NONE;
 
 			AREA m_area = { 0,0,1,1 };
-
-			static void BarrierSet(ID3D12GraphicsCommandList* comlist, D3D12_RESOURCE_STATES After, MTexture* texture) {
-				D3D12_RESOURCE_BARRIER barrier;
-				barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;					// バリアはリソースの状態遷移に対して設置
-				barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-				barrier.Transition.pResource = texture->Resource();		// リソースは描画ターゲット
-				barrier.Transition.StateBefore = texture->LastState(After);
-				barrier.Transition.StateAfter = After;		// 遷移後は描画ターゲット
-				barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-				if (barrier.Transition.StateAfter != barrier.Transition.StateBefore) {
-					comlist->ResourceBarrier(1, &barrier);
-				}
-			}
 
 			virtual bool ACS_TCALL BeginDraw(IDrawer**ppADC)final {
 				WaitDrawDone();

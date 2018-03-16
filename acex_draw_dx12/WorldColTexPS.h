@@ -28,7 +28,7 @@
 // SV_TARGET                0   xyzw        0   TARGET   float   xyzw
 //
 ps_5_0
-dcl_globalFlags refactoringAllowed | skipOptimization
+dcl_globalFlags refactoringAllowed
 dcl_sampler s0, mode_default
 dcl_resource_texture2d (float,float,float,float) t0
 dcl_input_ps linear v1.xyzw
@@ -43,10 +43,10 @@ ret
 
 const BYTE WorldColTexPS[] =
 {
-     68,  88,  66,  67,  31,  81, 
-    217, 129,  78,   9,  33, 216, 
-    113, 107, 133,  43,  66,  38, 
-    133, 180,   1,   0,   0,   0, 
+     68,  88,  66,  67,  29, 114, 
+    191, 224,  38, 209, 215, 240, 
+    217, 105, 247, 172,  36,  16, 
+    145, 187,   1,   0,   0,   0, 
     220,   2,   0,   0,   5,   0, 
       0,   0,  52,   0,   0,   0, 
     240,   0,   0,   0, 100,   1, 
@@ -56,7 +56,7 @@ const BYTE WorldColTexPS[] =
       0,   0,   0,   0,   0,   0, 
       0,   0,   2,   0,   0,   0, 
      60,   0,   0,   0,   0,   5, 
-    255, 255,   4,   1,   0,   0, 
+    255, 255,   0,   1,   0,   0, 
     138,   0,   0,   0,  82,  68, 
      49,  49,  60,   0,   0,   0, 
      24,   0,   0,   0,  32,   0, 
@@ -113,7 +113,7 @@ const BYTE WorldColTexPS[] =
      71,  69,  84,   0, 171, 171, 
      83,  72,  69,  88, 160,   0, 
       0,   0,  80,   0,   0,   0, 
-     40,   0,   0,   0, 106, 136, 
+     40,   0,   0,   0, 106,   8, 
       0,   1,  90,   0,   0,   3, 
       0,  96,  16,   0,   0,   0, 
       0,   0,  88,  24,   0,   4, 
