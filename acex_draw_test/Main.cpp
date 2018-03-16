@@ -18,13 +18,14 @@
 
 #define EndIfFalse(x) if(!x)return -1;
 
-static LPCWSTR	kWindowTitle = L"DX12 Sample";
 static const int	kWindowWidth = 960;
 static const int	kWindowHeight = 540;
 
 static int	ClientWidth = 960;
 static int	ClientHeight = 540;
 bool resize = false;
+
+bool useWarp = false;
 
 namespace {
 	acex::draw::VERTEX_COLOR VertexCol[] = { { 1,1,0,1 },{ 1,1,0,1 },{ 1,1,0,1 },{ 1,1,0,1 } };
@@ -95,7 +96,7 @@ int test_poligon() {
 	acex::draw::INIT_DESC ini;
 	ini.hWnd = AppBase::hMainWindow;
 	ini.Size = { static_cast<acs::uint>(ClientWidth) ,static_cast<acs::uint>(ClientHeight) };
-	ini.useWarpDevice = false;
+	ini.useWarpDevice = useWarp;
 	acs::SIACS<acex::draw::IDraw> draw;
 	if (!acex::draw::CreateDraw(&ini, &draw))return -1;
 	acs::SIACS<acex::draw::ITarget> screenTarget;
@@ -173,7 +174,7 @@ int test_texture() {
 	acex::draw::INIT_DESC ini;
 	ini.hWnd = AppBase::hMainWindow;
 	ini.Size = { static_cast<acs::uint>(ClientWidth) ,static_cast<acs::uint>(ClientHeight) };
-	ini.useWarpDevice = false;
+	ini.useWarpDevice = useWarp;
 	acs::SIACS<acex::draw::IDraw> draw;
 	if (!acex::draw::CreateDraw(&ini, &draw))return -1;
 	acex::draw::RESOURCE_DESC rdesc;
@@ -247,7 +248,7 @@ int test_light() {
 	acex::draw::INIT_DESC ini;
 	ini.hWnd = AppBase::hMainWindow;
 	ini.Size = { static_cast<acs::uint>(ClientWidth) ,static_cast<acs::uint>(ClientHeight) };
-	ini.useWarpDevice = false;
+	ini.useWarpDevice = useWarp;
 	acs::SIACS<acex::draw::IDraw> draw;
 	if (!acex::draw::CreateDraw(&ini, &draw))return -1;
 	acex::draw::RESOURCE_DESC rdesc;
@@ -387,7 +388,7 @@ int test_shadow() {
 	acex::draw::INIT_DESC ini;
 	ini.hWnd = AppBase::hMainWindow;
 	ini.Size = { static_cast<acs::uint>(ClientWidth) ,static_cast<acs::uint>(ClientHeight) };
-	ini.useWarpDevice = false;
+	ini.useWarpDevice = useWarp;
 	acs::SIACS<acex::draw::IDraw> draw;
 	if (!acex::draw::CreateDraw(&ini, &draw))return -1;
 	acex::draw::RESOURCE_DESC rdesc;

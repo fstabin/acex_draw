@@ -1265,7 +1265,7 @@ namespace  acex{
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 							i++;
 							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-							rootParameters[i].DescriptorTable.NumDescriptorRanges = 3;
+							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
 							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 							i++;
