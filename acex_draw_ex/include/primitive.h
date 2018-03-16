@@ -22,22 +22,9 @@ namespace acex {
 						uint16_t IndexData[] = { 0,1,2,3 };
 						acex::draw::VERTEX_POSITION VertexPos[] = { { st.l,st.t,0 },{ st.r,st.t,0 },{ st.l,st.b,0 },{ st.r,st.b,0 } };
 						acex::draw::VERTEX_UV VertexUv[] = { { 0,0 },{ 1,0 },{ 0,1 },{ 1,1 } };
-						acex::draw::RESOURCE_DESC rdesc;
-						acex::draw::INDEXBUFFER_DESC idesc;
-						idesc.ArraySize = 4;
-						idesc.fmt = acex::draw::IFMT_U16;
-						rdesc.AccessFlag = acex::draw::RESOURCE_ACCESS_NONE;
-						rdesc.type = acex::draw::RESOURCE_TYPE_INDEX;
-						rdesc.desc = &idesc;
-						if (!draw->CreateResource(rdesc, IndexData, (void**)&rIndex))throw(ACEXDrawExCreateResourceFailedException());
-						acex::draw::VERTEXBUFFER_DESC vdesc;
-						vdesc.ArraySize = 4;
-						rdesc.AccessFlag = acex::draw::RESOURCE_ACCESS_NONE;
-						rdesc.type = acex::draw::RESOURCE_TYPE_VERTEXPOS;
-						rdesc.desc = &vdesc;
-						if (!draw->CreateResource(rdesc, VertexPos, (void**)&rPos))throw(ACEXDrawExCreateResourceFailedException());
-						rdesc.type = acex::draw::RESOURCE_TYPE_VERTEXUV;
-						if (!draw->CreateResource(rdesc, VertexUv, (void**)&rUv))throw(ACEXDrawExCreateResourceFailedException());
+						if (!acex::draw::ex::CreateIIndex(&rIndex, draw, acex::draw::IFMT_U16, 4, acex::draw::RESOURCE_ACCESS_READ | acex::draw::RESOURCE_ACCESS_WRITE, IndexData))throw(ACEXDrawExCreateResourceFailedException());
+						if (!acex::draw::ex::CreateIVPosition(&rPos, draw, 4, acex::draw::RESOURCE_ACCESS_READ | acex::draw::RESOURCE_ACCESS_WRITE, VertexPos))throw(ACEXDrawExCreateResourceFailedException());
+						if (!acex::draw::ex::CreateIVUv(&rUv, draw, 4, acex::draw::RESOURCE_ACCESS_READ | acex::draw::RESOURCE_ACCESS_WRITE, VertexUv))throw(ACEXDrawExCreateResourceFailedException());
 					};
 					virtual ~Square() {};
 

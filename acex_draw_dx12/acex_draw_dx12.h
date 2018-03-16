@@ -940,17 +940,16 @@ namespace  acex{
 			*ppAdapter = nullptr;
 			for (UINT adapterIndex = 0; ; ++adapterIndex)
 			{
-				IDXGIAdapter1* pAdapter = nullptr;
+				CComPtr<IDXGIAdapter1> pAdapter = nullptr;
 				if (DXGI_ERROR_NOT_FOUND == pFactory->EnumAdapters1(adapterIndex, &pAdapter))
 				{
 					break;
 				}
 				if (SUCCEEDED(D3D12CreateDevice(pAdapter, MiniLevel, _uuidof(ID3D12Device), nullptr)))
 				{
-					*ppAdapter = pAdapter;
+					*ppAdapter = pAdapter.Detach();
 					return;
 				}
-				pAdapter->Release();
 			}
 		}
 		class MDraw :public IDraw, public IDrawer, public IUpdater {

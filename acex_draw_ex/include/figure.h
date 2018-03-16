@@ -6,6 +6,7 @@
 #include "acs_ioImage\include\acs_ioImage.h"
 #include "acs\include\def.h"
 #include "acs\include\vector.h"
+#include "acs\include\attribute.h"
 
 #include "base.h"
 
@@ -71,9 +72,9 @@ namespace acex {
 				}
 			};
 
-			class Figure {
+			class Figure:public acs::CopyDisable{
 			protected:
-				FigureHost * const hostRef = nullptr;
+				FigureHost* hostRef = nullptr;
 				acs::SIACS<acex::draw::IIWorld> dWorld;
 				acs::SIACS<acex::draw::IITexState> dTexstate;
 				uint32_t disit;
@@ -85,20 +86,11 @@ namespace acex {
 
 				bool mustupdate = true;
 			public:
-				ACS_NO_COPY(Figure);
-				inline Figure() {};
-				inline Figure(acex::draw::IDraw* draw, FigureHost* host, uint32_t _keta) :hostRef(host), disit(_keta) {
+				Figure() {};
+				Figure(acex::draw::IDraw* draw, FigureHost* host, uint32_t _keta) :hostRef(host), disit(_keta) {
 					if (_keta < 2)disit = _keta = 2;
 					if (!acex::draw::ex::CreateIIWorld(&dWorld, draw, _keta, acex::draw::RESOURCE_ACCESS_WRITE)) throw(ACEXDrawExCreateResourceFailedException());
 					if (!acex::draw::ex::CreateIITexState(&dTexstate, draw, _keta, acex::draw::RESOURCE_ACCESS_WRITE)) throw(ACEXDrawExCreateResourceFailedException());
-					vx = std::make_unique<acs::byte[]>(disit);
-				}
-				virtual ~Figure() {
-				}
-
-				void init(acex::draw::IDraw* draw, FigureHost* host, uint32_t _keta) {
-					this->~Figure();
-					new (this) Figure(draw, host, _keta);
 				}
 
 				inline void SetVal(acs::longlong r) {
@@ -204,16 +196,12 @@ namespace acex {
 
 			class ColorFigure :public Figure {
 			protected:
-				FigureColor * const refFcol;
+				FigureColor * refFcol = nullptr;
 			public:
-				ACS_NO_COPY(ColorFigure);
-				ColorFigure() :refFcol(nullptr) {}
+				ColorFigure() {};
 				ColorFigure(acex::draw::IDraw* draw, FigureHost* host, FigureColor* color, uint32_t _keta)
 					: Figure(draw, host, _keta), refFcol(color) {}
-				void init(acex::draw::IDraw* draw, FigureHost* host, FigureColor* color, uint32_t _keta) {
-					this->~ColorFigure();
-					new (this) ColorFigure(draw, host, color, _keta);
-				}
+					
 				virtual void Draw(acex::draw::IDrawer* context, acex::draw::ICamPro* Cam2D) {
 					if (d_keta == 0)return;
 					acex::draw::ex::RenderWCT_C(context, d_keta, 4, 4, acex::draw::PT_TRIANGLESTRIP, acex::draw::TS_POINT,

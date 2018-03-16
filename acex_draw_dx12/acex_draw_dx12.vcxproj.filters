@@ -107,7 +107,4 @@
       <UniqueIdentifier>{3c43d9cf-2f90-43bb-85bb-1b213110740e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="AtDraw2_dx12.rc" />
-  </ItemGroup>
 </Project>
