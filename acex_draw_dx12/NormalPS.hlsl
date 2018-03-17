@@ -5,7 +5,7 @@ struct PSInput
 	float3 	nor		: NORMAL;
 };
 
-cbuffer CBScene : register(b0)
+cbuffer CBScene : register(b1)
 {
 	float3 light;
 	float3 Diffuse;

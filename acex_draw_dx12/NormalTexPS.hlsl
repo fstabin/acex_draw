@@ -7,7 +7,7 @@ struct PSInput
 texture2D tex : register(t0);
 SamplerState  sampler_0 : register(s0);
 
-cbuffer CBScene : register(b0)
+cbuffer CBScene : register(b1)
 {
 	float3 light;
 	float3 Diffuse;

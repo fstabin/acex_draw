@@ -625,5 +625,5 @@ int test_shadow() {
 }
 
 int App::Main::Func() {
-	return test_texture();
+	return test_shadow();
 }

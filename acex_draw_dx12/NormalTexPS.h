@@ -22,7 +22,7 @@
 // ------------------------------ ---------- ------- ----------- -------------- ------
 // sampler_0                         sampler      NA          NA             s0      1 
 // tex                               texture  float4          2d             t0      1 
-// CBScene                           cbuffer      NA          NA            cb0      1 
+// CBScene                           cbuffer      NA          NA            cb1      1 
 //
 //
 //
@@ -43,24 +43,24 @@
 //
 ps_5_0
 dcl_globalFlags refactoringAllowed
-dcl_constantbuffer CB0[3], immediateIndexed
+dcl_constantbuffer CB1[3], immediateIndexed
 dcl_sampler s0, mode_default
 dcl_resource_texture2d (float,float,float,float) t0
 dcl_input_ps linear v1.xy
 dcl_input_ps linear v2.xyz
 dcl_output o0.xyzw
 dcl_temps 2
-dp3 r0.x, cb0[0].xyzx, cb0[0].xyzx
+dp3 r0.x, cb1[0].xyzx, cb1[0].xyzx
 rsq r0.x, r0.x
-mul r0.xyz, r0.xxxx, cb0[0].xyzx
+mul r0.xyz, r0.xxxx, cb1[0].xyzx
 dp3 r0.w, v2.xyzx, v2.xyzx
 rsq r0.w, r0.w
 mul r1.xyz, r0.wwww, v2.xyzx
 dp3 r0.x, r0.xyzx, r1.xyzx
 add r0.x, r0.x, l(1.000000)
 mul r0.x, r0.x, l(0.500000)
-add r0.yzw, cb0[1].xxyz, -cb0[2].xxyz
-mad r0.xyz, r0.xxxx, r0.yzwy, cb0[2].xyzx
+add r0.yzw, cb1[1].xxyz, -cb1[2].xxyz
+mad r0.xyz, r0.xxxx, r0.yzwy, cb1[2].xyzx
 sample_indexable(texture2d)(float,float,float,float) r1.xyzw, v1.xyxx, t0.xyzw, s0
 mul o0.xyz, r0.xyzx, r1.xyzx
 mov o0.w, r1.w
@@ -70,10 +70,10 @@ ret
 
 const BYTE NormalTexPS[] =
 {
-     68,  88,  66,  67,  81, 123, 
-     29, 235, 143, 106, 193, 110, 
-     77, 246,  10, 183, 247, 175, 
-     68, 134,   1,   0,   0,   0, 
+     68,  88,  66,  67,  37, 246, 
+    190,  43,  25,  35, 111,  47, 
+    130, 210, 221, 120,  71, 122, 
+      4,  79,   1,   0,   0,   0, 
     120,   5,   0,   0,   5,   0, 
       0,   0,  52,   0,   0,   0, 
      32,   2,   0,   0, 148,   2, 
@@ -104,7 +104,7 @@ const BYTE NormalTexPS[] =
       0,   0,   0,   0,   0,   0, 
       0,   0,   0,   0,   0,   0, 
       0,   0,   0,   0,   0,   0, 
-      0,   0,   0,   0,   1,   0, 
+      1,   0,   0,   0,   1,   0, 
       0,   0,   1,   0,   0,   0, 
     115,  97, 109, 112, 108, 101, 
     114,  95,  48,   0, 116, 101, 
@@ -193,7 +193,7 @@ const BYTE NormalTexPS[] =
      80,   0,   0,   0, 131,   0, 
       0,   0, 106,   8,   0,   1, 
      89,   0,   0,   4,  70, 142, 
-     32,   0,   0,   0,   0,   0, 
+     32,   0,   1,   0,   0,   0, 
       3,   0,   0,   0,  90,   0, 
       0,   3,   0,  96,  16,   0, 
       0,   0,   0,   0,  88,  24, 
@@ -209,9 +209,9 @@ const BYTE NormalTexPS[] =
       2,   0,   0,   0,  16,   0, 
       0,   9,  18,   0,  16,   0, 
       0,   0,   0,   0,  70, 130, 
-     32,   0,   0,   0,   0,   0, 
+     32,   0,   1,   0,   0,   0, 
       0,   0,   0,   0,  70, 130, 
-     32,   0,   0,   0,   0,   0, 
+     32,   0,   1,   0,   0,   0, 
       0,   0,   0,   0,  68,   0, 
       0,   5,  18,   0,  16,   0, 
       0,   0,   0,   0,  10,   0, 
@@ -220,7 +220,7 @@ const BYTE NormalTexPS[] =
      16,   0,   0,   0,   0,   0, 
       6,   0,  16,   0,   0,   0, 
       0,   0,  70, 130,  32,   0, 
-      0,   0,   0,   0,   0,   0, 
+      1,   0,   0,   0,   0,   0, 
       0,   0,  16,   0,   0,   7, 
     130,   0,  16,   0,   0,   0, 
       0,   0,  70,  18,  16,   0, 
@@ -250,17 +250,17 @@ const BYTE NormalTexPS[] =
       0,   0,   0,   0,   0,  63, 
       0,   0,   0,  10, 226,   0, 
      16,   0,   0,   0,   0,   0, 
-      6, 137,  32,   0,   0,   0, 
+      6, 137,  32,   0,   1,   0, 
       0,   0,   1,   0,   0,   0, 
       6, 137,  32, 128,  65,   0, 
-      0,   0,   0,   0,   0,   0, 
+      0,   0,   1,   0,   0,   0, 
       2,   0,   0,   0,  50,   0, 
       0,  10, 114,   0,  16,   0, 
       0,   0,   0,   0,   6,   0, 
      16,   0,   0,   0,   0,   0, 
     150,   7,  16,   0,   0,   0, 
       0,   0,  70, 130,  32,   0, 
-      0,   0,   0,   0,   2,   0, 
+      1,   0,   0,   0,   2,   0, 
       0,   0,  69,   0,   0, 139, 
     194,   0,   0, 128,  67,  85, 
      21,   0, 242,   0,  16,   0, 

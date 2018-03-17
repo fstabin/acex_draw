@@ -68,9 +68,8 @@ if(val <= 0)delete this;\
 #define GET_DESC(type) private: type desc;\
 public: virtual void ACS_TCALL GetDesc(type* out) final {*out = desc;};
 
-#define GET_RD_DEF(name) const decltype(name) & GetRD(){return name;}
-#define GET_BUF_DEF(name) const decltype(name) & GetBUF(){return name;}
-#define GET_HEAP_DEF(name) const decltype(name)& GetHEAP(){return name;}
+#define GET_HEAP_DEF(name) const decltype(name)& GetHEAP(){return name;}//IDescripterHeap
+#define GET_RES_DEF(name) const decltype(name)& GetRES(){return name;}//IResource
 
 #define MAP_DEF(buf) \
 virtual bool Map(void** d)final{	return SUCCEEDED(Buf->Map(0, 0, d));}\
@@ -148,8 +147,10 @@ namespace  acex{
 			ACS_IACS_CHILD;
 			CComPtr<ID3D12DescriptorHeap> Heap;
 			acs::SIACS<MTexture> PTex;
+			
 		public:
 			MRenderResource(ID3D12Device* pDevice, MTexture* parent,ID3D12Resource* Resource,DXGI_FORMAT fomat):PTex(parent){
+				
 				HRESULT hr;
 				D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 				desc.NumDescriptors = 1;
@@ -157,20 +158,23 @@ namespace  acex{
 				desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 				hr = pDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&Heap));
 				if (FAILED(hr))throw(VIEW_CREATE_ERR());
-				D3D12_SHADER_RESOURCE_VIEW_DESC srvd = {};
-				srvd.Format = fomat;
-				srvd.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-				srvd.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-				srvd.Texture2D.MipLevels = 1;
-				srvd.Texture2D.PlaneSlice = 0;
-				srvd.Texture2D.MostDetailedMip = 0;
-				srvd.Texture2D.ResourceMinLODClamp = 0;
-				pDevice->CreateShaderResourceView(Resource, &srvd, Heap->GetCPUDescriptorHandleForHeapStart());
+				D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
+				srv = {};
+				srv.Format = fomat;
+				srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+				srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+				srv.Texture2D.MipLevels = 1;
+				srv.Texture2D.PlaneSlice = 0;
+				srv.Texture2D.MostDetailedMip = 0;
+				srv.Texture2D.ResourceMinLODClamp = 0;
+				pDevice->CreateShaderResourceView(Resource, &srv, Heap->GetCPUDescriptorHandleForHeapStart());
 			}
 			MTexture* GetTexture() {
 				return PTex;
 			}
-			GET_RD_DEF(Heap);
+			ID3D12DescriptorHeap* GetHEAP() {
+				return Heap;
+			};
 		};
 
 		struct MTARGET_INIT_DESC {
@@ -375,7 +379,7 @@ namespace  acex{
 				srvd.Texture2D.MipSlice = 0;
 				pDevice->CreateDepthStencilView(Resource, &srvd, Heap->GetCPUDescriptorHandleForHeapStart());
 			}
-			GET_RD_DEF(Heap);
+			GET_HEAP_DEF(Heap);
 
 			MTexture* GetTexture() {
 				return PTex;
@@ -443,7 +447,9 @@ namespace  acex{
 			}
 
 			MAP_DEF(Buf);
-			GET_RD_DEF(data);
+			D3D12_INDEX_BUFFER_VIEW& GetIBV() {
+				return data;
+			};
 		};
 
 		class MVertex :public MResource, public IVPosition, public IVColor, public IVUv, public IVNormal, public IIWorld, public IITexState {
@@ -544,7 +550,7 @@ namespace  acex{
 				data.StrideInBytes = StrideSizeofByte;
 			}
 			MAP_DEF(Buf);
-			GET_RD_DEF(data);
+			D3D12_VERTEX_BUFFER_VIEW& GetVBV() { return data; }
 		};
 
 		class MCamPro :public MResource, public ICamPro {
@@ -552,7 +558,6 @@ namespace  acex{
 			GET_DESC(CAMPRO_DESC);
 		private:
 			CComPtr<ID3D12Resource> Buf;
-			CComPtr<ID3D12DescriptorHeap> Heap;
 		public:
 			MCamPro(
 				ID3D12Device* pDevice,
@@ -562,16 +567,6 @@ namespace  acex{
 				desc = *_desc;
 				HRESULT hr;
 				{
-					// 定数バッファ用DescriptorHeap作成
-					{
-						D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-						desc.NumDescriptors = 1;		// 定数バッファ1つ
-						desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;	
-						desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;	// シェーダからアクセスする
-
-						hr = pDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&Heap));
-						if FAILED(hr)throw(RESOURCE_CREATE_ERR());
-					}
 					// 定数バッファリソース作成
 					{
 						D3D12_HEAP_PROPERTIES prop;
@@ -597,10 +592,6 @@ namespace  acex{
 						hr = pDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc,
 							D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&Buf));
 						if FAILED(hr)throw(RESOURCE_CREATE_ERR());
-						D3D12_CONSTANT_BUFFER_VIEW_DESC cbv;
-						cbv.BufferLocation = Buf->GetGPUVirtualAddress();
-						cbv.SizeInBytes = static_cast<UINT>(desc.Width);
-						pDevice->CreateConstantBufferView(&cbv, Heap->GetCPUDescriptorHandleForHeapStart());
 					}
 				}
 				if (pSource) {
@@ -612,14 +603,13 @@ namespace  acex{
 				}
 			}
 			MAP_DEF(Buf);
-			GET_HEAP_DEF(Heap);
+			GET_RES_DEF(Buf);
 		};
 		class MLight :public MResource, public ILight {
 			ACS_IACS_CHILD;
 			GET_DESC(LIGHT_DESC);
 		private:
 			CComPtr<ID3D12Resource> Buf;
-			CComPtr<ID3D12DescriptorHeap> Heap;
 		public:
 			MLight(
 				ID3D12Device* pDevice,
@@ -629,18 +619,7 @@ namespace  acex{
 				desc = *_desc;
 				HRESULT hr;
 				{
-					// 定数バッファ用DescriptorHeap作成
-					{
-						D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-						desc.NumDescriptors = 1;		// 定数バッファ1つ
-						desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;	
-						desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;	// シェーダからアクセスする
-
-						hr = pDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&Heap));
-						if FAILED(hr)throw(RESOURCE_CREATE_ERR());
-					}
 					// 定数バッファリソースを作成
-					// 実際の定数バッファはここに書き込んでシェーダから参照される
 					{
 						D3D12_HEAP_PROPERTIES prop;
 						prop.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -665,10 +644,6 @@ namespace  acex{
 						hr = pDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc,
 							D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&Buf));
 						if FAILED(hr)throw(RESOURCE_CREATE_ERR());
-						D3D12_CONSTANT_BUFFER_VIEW_DESC cbv;
-						cbv.BufferLocation = Buf->GetGPUVirtualAddress();
-						cbv.SizeInBytes = static_cast<UINT>(desc.Width);
-						pDevice->CreateConstantBufferView(&cbv, Heap->GetCPUDescriptorHandleForHeapStart());
 					}
 				}
 				if (pSource) {
@@ -680,7 +655,7 @@ namespace  acex{
 				}
 			}
 			MAP_DEF(Buf);
-			GET_HEAP_DEF(Heap);
+			GET_RES_DEF(Buf);
 		};
 
 		class MTexture2D :public ITexture2D, public MTexture {
@@ -933,7 +908,7 @@ namespace  acex{
 			const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& GetCopyInfo() {
 				return pPlace;
 			}
-			GET_BUF_DEF(Buf);
+			GET_RES_DEF(Buf);
 
 			D3D12_RESOURCE_STATES LastState(D3D12_RESOURCE_STATES ls) {
 				auto out = mState;
@@ -1166,42 +1141,37 @@ namespace  acex{
 					{
 						// ルートシグネチャ作成
 
+						D3D12_DESCRIPTOR_RANGE ranges[2];
+						ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+						ranges[0].NumDescriptors = 1;
+						ranges[0].BaseShaderRegister = 0;
+						ranges[0].RegisterSpace = 0;
+						ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+						ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+						ranges[1].NumDescriptors = 1;
+						ranges[1].BaseShaderRegister = 0;
+						ranges[1].RegisterSpace = 0;
+						ranges[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
 						//worldのみ
 						{
-							D3D12_DESCRIPTOR_RANGE ranges[3];
 							D3D12_ROOT_PARAMETER rootParameters[3];
 
-							ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;				// Descriptorの種類
-							ranges[0].NumDescriptors = 1;																// Descriptorの数
-							ranges[0].BaseShaderRegister = 0;														// シェーダ側の開始インデックス
-							ranges[0].RegisterSpace = 0;
-							ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-							ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-							ranges[1].NumDescriptors = 1;
-							ranges[1].BaseShaderRegister = 0;
-							ranges[1].RegisterSpace = 0;
-							ranges[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-							ranges[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-							ranges[2].NumDescriptors = 1;
-							ranges[2].BaseShaderRegister = 0;
-							ranges[2].RegisterSpace = 0;
-							ranges[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-							rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-							rootParameters[0].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[0].DescriptorTable.pDescriptorRanges = &ranges[0];
+							rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+							rootParameters[0].Constants.Num32BitValues = 16;
+							rootParameters[0].Constants.ShaderRegister = 0;
+							rootParameters[0].Constants.RegisterSpace = 0;
 							rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
 							rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 							rootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[1].DescriptorTable.pDescriptorRanges = &ranges[1];
+							rootParameters[1].DescriptorTable.pDescriptorRanges = &ranges[0];
 							rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 							rootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 							rootParameters[2].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[2].DescriptorTable.pDescriptorRanges = &ranges[2];
+							rootParameters[2].DescriptorTable.pDescriptorRanges = &ranges[1];
 							rootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 							D3D12_ROOT_SIGNATURE_DESC desc;
@@ -1243,53 +1213,30 @@ namespace  acex{
 						}
 						//normal付き
 						{
-							D3D12_DESCRIPTOR_RANGE ranges[4];
 							D3D12_ROOT_PARAMETER rootParameters[4];
 							size_t i = 0;
 
-							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;					
-							ranges[i].NumDescriptors = 1;														
-							ranges[i].BaseShaderRegister = 0;													
-							ranges[i].RegisterSpace = 0;														
-							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;	
-							i++;
-							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-							ranges[i].NumDescriptors = 1;
-							ranges[i].BaseShaderRegister = 0;
-							ranges[i].RegisterSpace = 0;
-							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-							i++;
-							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-							ranges[i].NumDescriptors = 1;
-							ranges[i].BaseShaderRegister = 0;
-							ranges[i].RegisterSpace = 0;
-							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-							i++;
-							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-							ranges[i].NumDescriptors = 1;
-							ranges[i].BaseShaderRegister = 0;
-							ranges[i].RegisterSpace = 0;
-							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
 							i = 0;
-							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+							rootParameters[i].Constants.Num32BitValues = 16;
+							rootParameters[i].Constants.ShaderRegister = 0;
+							rootParameters[i].Constants.RegisterSpace = 0;
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 							i++;
-							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+							rootParameters[i].Constants.Num32BitValues = 16;
+							rootParameters[i].Constants.ShaderRegister = 1;
+							rootParameters[i].Constants.RegisterSpace = 0;
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 							i++;
 							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[0];
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 							i++;
 							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[1];
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 							D3D12_ROOT_SIGNATURE_DESC desc;
@@ -1316,42 +1263,24 @@ namespace  acex{
 						}
 						//sprite_root
 						{
-							D3D12_DESCRIPTOR_RANGE ranges[3];
 							D3D12_ROOT_PARAMETER rootParameters[3];
 							size_t i = 0;
 
-							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;									// このDescriptorRangeは定数バッファ
-							ranges[i].NumDescriptors = 1;															// Descriptorは1つ
-							ranges[i].BaseShaderRegister = 0;														// シェーダ側の開始インデックスは0番
-							ranges[i].RegisterSpace = 0;															// TODO: SM5.1からのspaceだけど、どういうものかよくわからない
-							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;		// TODO: とりあえず-1を入れておけばOK？
-							i++;
-							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-							ranges[i].NumDescriptors = 1;
-							ranges[i].BaseShaderRegister = 0;
-							ranges[i].RegisterSpace = 0;
-							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-							i++;
-							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-							ranges[i].NumDescriptors = 1;
-							ranges[i].BaseShaderRegister = 0;
-							ranges[i].RegisterSpace = 0;
-							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
 							i = 0;
-							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+							rootParameters[i].Constants.Num32BitValues = 16;
+							rootParameters[i].Constants.ShaderRegister = 0;
+							rootParameters[i].Constants.RegisterSpace = 0;
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
 							i++;
 							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[0];
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 							i++;
 							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[1];
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 							D3D12_ROOT_SIGNATURE_DESC desc;
@@ -1366,20 +1295,14 @@ namespace  acex{
 						//depth_root
 						{
 							const uint32_t parmCnt = 1;
-							D3D12_DESCRIPTOR_RANGE ranges[parmCnt];
 							D3D12_ROOT_PARAMETER rootParameters[parmCnt];
 							size_t i = 0;
 
-							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;	
-							ranges[i].NumDescriptors = 1;															
-							ranges[i].BaseShaderRegister = 0;													
-							ranges[i].RegisterSpace = 0;														
-							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
 							i = 0;
-							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+							rootParameters[i].Constants.Num32BitValues = 16;
+							rootParameters[i].Constants.ShaderRegister = 0;
+							rootParameters[i].Constants.RegisterSpace = 0;
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
 							D3D12_ROOT_SIGNATURE_DESC desc;
@@ -1393,64 +1316,36 @@ namespace  acex{
 						}
 						//shadow_root
 						{
-							D3D12_DESCRIPTOR_RANGE ranges[5];
 							D3D12_ROOT_PARAMETER rootParameters[5];
 							size_t i = 0;
 
-							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;									// このDescriptorRangeは定数バッファ
-							ranges[i].NumDescriptors = 1;															// Descriptorは1つ
-							ranges[i].BaseShaderRegister = 0;														// シェーダ側の開始インデックスは0番
-							ranges[i].RegisterSpace = 0;															// TODO: SM5.1からのspaceだけど、どういうものかよくわからない
-							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;		// TODO: とりあえず-1を入れておけばOK？
-							i++;
-							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-							ranges[i].NumDescriptors = 1;
-							ranges[i].BaseShaderRegister = 1;
-							ranges[i].RegisterSpace = 0;
-							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-							i++;
-							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-							ranges[i].NumDescriptors = 1;
-							ranges[i].BaseShaderRegister = 0;
-							ranges[i].RegisterSpace = 0;
-							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-							i++;
-							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-							ranges[i].NumDescriptors = 1;
-							ranges[i].BaseShaderRegister = 0;
-							ranges[i].RegisterSpace = 0;
-							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-							i++;
-							ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-							ranges[i].NumDescriptors = 1;
-							ranges[i].BaseShaderRegister = 0;
-							ranges[i].RegisterSpace = 0;
-							ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
 							i = 0;
-							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+							rootParameters[i].Constants.Num32BitValues = 16;
+							rootParameters[i].Constants.ShaderRegister = 0;
+							rootParameters[i].Constants.RegisterSpace = 0;
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 							i++;
-							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+							rootParameters[i].Constants.Num32BitValues = 16;
+							rootParameters[i].Constants.ShaderRegister = 1;
+							rootParameters[i].Constants.RegisterSpace = 0;
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 							i++;
-							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+							rootParameters[i].Constants.Num32BitValues = 16;
+							rootParameters[i].Constants.ShaderRegister = 0;
+							rootParameters[i].Constants.RegisterSpace = 0;
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 							i++;
 							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[0];
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 							i++;
 							rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 							rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
-							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+							rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[1];
 							rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 							D3D12_ROOT_SIGNATURE_DESC desc;
@@ -1655,7 +1550,6 @@ namespace  acex{
 							pdesc.PS = { WorldColTexPS_C, sizeof(WorldColTexPS_C) };
 							CreatePSO_1(pipe_sprite_col_c, pdesc);
 						}
-
 						//depth
 						{
 							D3D12_INPUT_ELEMENT_DESC elementDescs[] = {
@@ -2018,7 +1912,7 @@ namespace  acex{
 				if (pDepth) {
 					auto p = dynamic_cast<MDepthStencil*>(pDepth);
 					BarrierSet(comlist, D3D12_RESOURCE_STATE_COMMON | D3D12_RESOURCE_STATE_DEPTH_WRITE, p->GetTexture());
-					pDepth_using = p->GetRD();
+					pDepth_using = p->GetHEAP();
 					d_hnd = pDepth_using->GetCPUDescriptorHandleForHeapStart();
 				}
 				else {
@@ -2060,11 +1954,11 @@ namespace  acex{
 				D3D12_TEXTURE_COPY_LOCATION dst;
 				D3D12_TEXTURE_COPY_LOCATION src;
 
-				dst.pResource = tdst->GetBUF();
+				dst.pResource = tdst->GetRES();
 				dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 				dst.SubresourceIndex = 0;
 
-				src.pResource = tsrc->GetBUF();
+				src.pResource = tsrc->GetRES();
 				src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 				src.PlacedFootprint = tsrc->GetCopyInfo();
 				comlist->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
@@ -2142,7 +2036,7 @@ namespace  acex{
 				//インデックスバッファセット
 				{
 					auto p = dynamic_cast<MIndex*>(data->index);
-					comlist->IASetIndexBuffer(&p->GetRD());
+					comlist->IASetIndexBuffer(&p->GetIBV());
 				}
 				//頂点バッファセット
 				{
@@ -2150,7 +2044,7 @@ namespace  acex{
 					auto p1 = dynamic_cast<MVertex*>(data->colors);
 					auto p2 = dynamic_cast<MVertex*>(data->worlds);
 					D3D12_VERTEX_BUFFER_VIEW VBV[3] = {
-						p0->GetRD(),p1->GetRD(),p2->GetRD()
+						p0->GetVBV(),p1->GetVBV(),p2->GetVBV()
 					};
 					comlist->IASetVertexBuffers(0, 3, VBV);
 				}
@@ -2161,7 +2055,7 @@ namespace  acex{
 				//インデックスバッファセット
 				{
 					auto p = dynamic_cast<MIndex*>(data->index);
-					comlist->IASetIndexBuffer(&p->GetRD());
+					comlist->IASetIndexBuffer(&p->GetIBV());
 				}
 				//頂点バッファセット
 				{
@@ -2169,357 +2063,264 @@ namespace  acex{
 					auto p1 = dynamic_cast<MVertex*>(data->uvs);
 					auto p2 = dynamic_cast<MVertex*>(data->worlds);
 					D3D12_VERTEX_BUFFER_VIEW VBV[3] = {
-						p0->GetRD(),p1->GetRD(),p2->GetRD()
+						p0->GetVBV(),p1->GetVBV(),p2->GetVBV()
 					};
 					comlist->IASetVertexBuffers(0, 3, VBV);
 				}
 				//定数バッファセット
 				{
 					auto p0 = dynamic_cast<MRenderResource*>(data->texture);
-					ID3D12DescriptorHeap* pCB;
+					auto p1 = GetSamplerHeap(data->sample);
+					ID3D12DescriptorHeap* heaps[] = { p0->GetHEAP(), p1};
 
 					BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, p0->GetTexture());
-					pCB = p0->GetRD();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(0, pCB->GetGPUDescriptorHandleForHeapStart());
-
-					pCB = GetSamplerHeap(data->sample);
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(1, pCB->GetGPUDescriptorHandleForHeapStart());
+					comlist->SetDescriptorHeaps(2, heaps);
+					comlist->SetGraphicsRootDescriptorTable(0, p0->GetHEAP()->GetGPUDescriptorHandleForHeapStart());
+					comlist->SetGraphicsRootDescriptorTable(1, p1->GetGPUDescriptorHandleForHeapStart());
 				}
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, 0, 0, 0);
 			}
 			void RenderWorld(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_WORLD* data) {
 				//インデックスバッファセット
-				{
-					auto p = dynamic_cast<MIndex*>(data->index);
-					comlist->IASetIndexBuffer(&p->GetRD());
-				}
+				auto i = dynamic_cast<MIndex*>(data->index);
+				comlist->IASetIndexBuffer(&i->GetIBV());
+				
 				//頂点バッファセット
-				{
-					auto p0 = dynamic_cast<MVertex*>(data->positions);
-					auto p1 = dynamic_cast<MVertex*>(data->colors);
-					auto p2 = dynamic_cast<MVertex*>(data->worlds);
-					D3D12_VERTEX_BUFFER_VIEW VBV[3] = {
-						p0->GetRD(),p1->GetRD(),p2->GetRD()
-					};
-					comlist->IASetVertexBuffers(0, 3, VBV);
-				}
+				auto v0 = dynamic_cast<MVertex*>(data->positions);
+				auto v1 = dynamic_cast<MVertex*>(data->colors);
+				auto v2 = dynamic_cast<MVertex*>(data->worlds);
+				D3D12_VERTEX_BUFFER_VIEW VBV[3] = {
+					v0->GetVBV(),v1->GetVBV(),v2->GetVBV()
+				};
+				comlist->IASetVertexBuffers(0, 3, VBV);
+				
 				//定数バッファセット
-				{
-					auto p = dynamic_cast<MCamPro*>(data->campro);
-					static const UINT DcCount = 1;
-					ID3D12DescriptorHeap* pCB =  p->GetHEAP();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(0, pCB->GetGPUDescriptorHandleForHeapStart());
-				}
+				auto c0 = dynamic_cast<MCamPro*>(data->campro);
+				comlist->SetGraphicsRootConstantBufferView(0, c0->GetRES()->GetGPUVirtualAddress());
+				
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, 0, 0, 0);
 			}
 			void RenderWCT(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_WCT* data) {
 				//インデックスバッファセット
-				{
-					auto p = dynamic_cast<MIndex*>(data->index);
-					comlist->IASetIndexBuffer(&p->GetRD());
-				}
+				auto i = dynamic_cast<MIndex*>(data->index);
+				comlist->IASetIndexBuffer(&i->GetIBV());
+
 				//頂点バッファセット
-				{
-					auto p0 = dynamic_cast<MVertex*>(data->positions);
-					auto p1 = dynamic_cast<MVertex*>(data->colors);
-					auto p2 = dynamic_cast<MVertex*>(data->uvs);
-					auto p3 = dynamic_cast<MVertex*>(data->worlds);
-					auto p4 = dynamic_cast<MVertex*>(data->texstates);
-					D3D12_VERTEX_BUFFER_VIEW VBV[5] = {
-						p0->GetRD(),p1->GetRD(),p2->GetRD(),p3->GetRD(),p4->GetRD()
-					};
-					comlist->IASetVertexBuffers(0, 5, VBV);
-				}
+				auto v0 = dynamic_cast<MVertex*>(data->positions);
+				auto v1 = dynamic_cast<MVertex*>(data->colors);
+				auto v2 = dynamic_cast<MVertex*>(data->uvs);
+				auto v3 = dynamic_cast<MVertex*>(data->worlds);
+				auto v4 = dynamic_cast<MVertex*>(data->texstates);
+				D3D12_VERTEX_BUFFER_VIEW VBV[5] = {
+					v0->GetVBV(),v1->GetVBV(),v2->GetVBV(),v3->GetVBV(),v4->GetVBV()
+				};
+				comlist->IASetVertexBuffers(0, 5, VBV);
+
 				//定数バッファセット
-				{
-					auto p0 = dynamic_cast<MCamPro*>(data->campro);
-					auto p1 = dynamic_cast<MRenderResource*>(data->texture);
-					ID3D12DescriptorHeap* pCB;
+				auto c0 = dynamic_cast<MCamPro*>(data->campro);
+				auto cTexture = dynamic_cast<MRenderResource*>(data->texture);
+				auto cSampler = GetSamplerHeap(data->sample);
+				ID3D12DescriptorHeap* heaps[] = { cTexture->GetHEAP(), cSampler };
+				BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, cTexture->GetTexture());
+				comlist->SetDescriptorHeaps(2, heaps);
+				comlist->SetGraphicsRootConstantBufferView(0, c0->GetRES()->GetGPUVirtualAddress());
+				comlist->SetGraphicsRootDescriptorTable(1, cTexture->GetHEAP()->GetGPUDescriptorHandleForHeapStart());
+				comlist->SetGraphicsRootDescriptorTable(2, cSampler->GetGPUDescriptorHandleForHeapStart());
 
-					pCB = p0->GetHEAP();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(0, pCB->GetGPUDescriptorHandleForHeapStart());
-
-					BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, p1->GetTexture());
-					pCB = p1->GetRD();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(1, pCB->GetGPUDescriptorHandleForHeapStart());
-
-					pCB = GetSamplerHeap(data->sample);
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(2, pCB->GetGPUDescriptorHandleForHeapStart());
-				}
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, 0, 0, 0);
 			}
 			void RenderWorldTex(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_WORLD_TEX* data) {
 				//インデックスバッファセット
-				{
-					auto p = dynamic_cast<MIndex*>(data->index);
-					comlist->IASetIndexBuffer(&p->GetRD());
-				}
+				auto i = dynamic_cast<MIndex*>(data->index);
+				comlist->IASetIndexBuffer(&i->GetIBV());
+
 				//頂点バッファセット
-				{
-					auto p0 = dynamic_cast<MVertex*>(data->positions);
-					auto p1 = dynamic_cast<MVertex*>(data->uvs);
-					auto p2 = dynamic_cast<MVertex*>(data->worlds);
-					auto p3 = dynamic_cast<MVertex*>(data->texstates);
-					D3D12_VERTEX_BUFFER_VIEW VBV[4] = {
-						p0->GetRD(),p1->GetRD(),p2->GetRD(),p3->GetRD()
-					};
-					comlist->IASetVertexBuffers(0, 4, VBV);
-				}
+				auto v0 = dynamic_cast<MVertex*>(data->positions);
+				auto v1 = dynamic_cast<MVertex*>(data->uvs);
+				auto v2 = dynamic_cast<MVertex*>(data->worlds);
+				auto v3 = dynamic_cast<MVertex*>(data->texstates);
+				D3D12_VERTEX_BUFFER_VIEW VBV[4] = {
+					v0->GetVBV(),v1->GetVBV(),v2->GetVBV(),v3->GetVBV()
+				};
+				comlist->IASetVertexBuffers(0, 4, VBV);
+
 				//定数バッファセット
-				{
-					auto p0 = dynamic_cast<MCamPro*>(data->campro);
-					auto p1 = dynamic_cast<MRenderResource*>(data->texture);
-					ID3D12DescriptorHeap* pCB;
-				
-					pCB = p0->GetHEAP();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(0, pCB->GetGPUDescriptorHandleForHeapStart());
+				auto c0 = dynamic_cast<MCamPro*>(data->campro);
+				auto cTexture = dynamic_cast<MRenderResource*>(data->texture);
+				auto cSampler = GetSamplerHeap(data->sample);
+				ID3D12DescriptorHeap* heaps[] = { cTexture->GetHEAP(), cSampler };
+				BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, cTexture->GetTexture());
+				comlist->SetDescriptorHeaps(2, heaps);
+				comlist->SetGraphicsRootConstantBufferView(0, c0->GetRES()->GetGPUVirtualAddress());
+				comlist->SetGraphicsRootDescriptorTable(1, cTexture->GetHEAP()->GetGPUDescriptorHandleForHeapStart());
+				comlist->SetGraphicsRootDescriptorTable(2, cSampler->GetGPUDescriptorHandleForHeapStart());
 
-					BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, p1->GetTexture());
-					pCB = p1->GetRD();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(1, pCB->GetGPUDescriptorHandleForHeapStart());
-
-					pCB = GetSamplerHeap(data->sample);
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(2, pCB->GetGPUDescriptorHandleForHeapStart());
-				}
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, 0, 0, 0);
 			}
 			void RenderNormalWorld(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_NORMAL_WORLD* data) {
 				//インデックスバッファセット
-				{
-					auto p = dynamic_cast<MIndex*>(data->index);
-					comlist->IASetIndexBuffer(&p->GetRD());
-				}
+				auto i = dynamic_cast<MIndex*>(data->index);
+				comlist->IASetIndexBuffer(&i->GetIBV());
+
 				//頂点バッファセット
-				{
-					auto p0 = dynamic_cast<MVertex*>(data->positions);
-					auto p1 = dynamic_cast<MVertex*>(data->colors);
-					auto p2 = dynamic_cast<MVertex*>(data->normal);
-					auto p3 = dynamic_cast<MVertex*>(data->worlds);
-					D3D12_VERTEX_BUFFER_VIEW VBV[] = {
-						p0->GetRD(),p1->GetRD(),p2->GetRD(),p3->GetRD()
-					};
-					comlist->IASetVertexBuffers(0, 4, VBV);
-				}
+				auto v0 = dynamic_cast<MVertex*>(data->positions);
+				auto v1 = dynamic_cast<MVertex*>(data->colors);
+				auto v2 = dynamic_cast<MVertex*>(data->normal);
+				auto v3 = dynamic_cast<MVertex*>(data->worlds);
+				D3D12_VERTEX_BUFFER_VIEW VBV[4] = {
+					v0->GetVBV(),v1->GetVBV(),v2->GetVBV(),v3->GetVBV()
+				};
+				comlist->IASetVertexBuffers(0, 4, VBV);
+
 				//定数バッファセット
-				{
-					auto p0 = dynamic_cast<MCamPro*>(data->campro);
-					auto p1 = dynamic_cast<MLight*>(data->light);
-					static const UINT DcCount = 2;
-					ID3D12DescriptorHeap* pCB[DcCount] = { p0->GetHEAP(), p1->GetHEAP() };
-					comlist->SetDescriptorHeaps(1, pCB);
-					comlist->SetGraphicsRootDescriptorTable(0, pCB[0]->GetGPUDescriptorHandleForHeapStart());
-					comlist->SetDescriptorHeaps(1, &pCB[1]);
-					comlist->SetGraphicsRootDescriptorTable(1, pCB[1]->GetGPUDescriptorHandleForHeapStart());
-				}
+				auto p0 = dynamic_cast<MCamPro*>(data->campro);
+				auto p1 = dynamic_cast<MLight*>(data->light);
+				static const UINT DcCount = 2;
+				comlist->SetGraphicsRootConstantBufferView(0, p0->GetRES()->GetGPUVirtualAddress());
+				comlist->SetGraphicsRootConstantBufferView(1, p1->GetRES()->GetGPUVirtualAddress());
+
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, 0, 0, 0);
 			}
 			void RenderNormalWorldTex(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_NORMAL_WORLD_TEX* data) {
 				//インデックスバッファセット
-				{
-					auto p = dynamic_cast<MIndex*>(data->index);
-					comlist->IASetIndexBuffer(&p->GetRD());
-				}
-				//頂点バッファセット
-				{
-					auto p0 = dynamic_cast<MVertex*>(data->positions);
-					auto p1 = dynamic_cast<MVertex*>(data->uvs);
-					auto p2 = dynamic_cast<MVertex*>(data->normal);
-					auto p3 = dynamic_cast<MVertex*>(data->worlds);
-					auto p4 = dynamic_cast<MVertex*>(data->texstates);
-					D3D12_VERTEX_BUFFER_VIEW VBV[] = {
-						p0->GetRD(),p1->GetRD(),p2->GetRD(),p3->GetRD(),p4->GetRD()
-					};
-					comlist->IASetVertexBuffers(0, 5, VBV);
-				}
-				//定数バッファセット
-				{			
-					static const UINT DcCount = 1;
-					ID3D12DescriptorHeap* pCB;
-				
-					auto p0 = dynamic_cast<MCamPro*>(data->campro);
-					pCB = p0->GetHEAP();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(0, pCB->GetGPUDescriptorHandleForHeapStart());	
-				
-					auto p1 = dynamic_cast<MLight*>(data->light);
-					pCB = p1->GetHEAP();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(1, pCB->GetGPUDescriptorHandleForHeapStart());
-			
-					auto p2 = dynamic_cast<MRenderResource*>(data->texture);
-					BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, p2->GetTexture());
-					pCB = p2->GetRD();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(2, pCB->GetGPUDescriptorHandleForHeapStart());
+				auto i = dynamic_cast<MIndex*>(data->index);
+				comlist->IASetIndexBuffer(&i->GetIBV());
 
-					pCB = GetSamplerHeap(data->sample);
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(3, pCB->GetGPUDescriptorHandleForHeapStart());
-				}
+				//頂点バッファセット
+				auto v0 = dynamic_cast<MVertex*>(data->positions);
+				auto v1 = dynamic_cast<MVertex*>(data->uvs);
+				auto v2 = dynamic_cast<MVertex*>(data->normal);
+				auto v3 = dynamic_cast<MVertex*>(data->worlds);
+				auto v4 = dynamic_cast<MVertex*>(data->texstates);
+				D3D12_VERTEX_BUFFER_VIEW VBV[5] = {
+					v0->GetVBV(),v1->GetVBV(),v2->GetVBV(),v3->GetVBV(),v4->GetVBV()
+				};
+				comlist->IASetVertexBuffers(0, 5, VBV);
+
+				//定数バッファセット
+				auto c0 = dynamic_cast<MCamPro*>(data->campro);
+				auto c1 = dynamic_cast<MLight*>(data->light);
+				auto cTexture = dynamic_cast<MRenderResource*>(data->texture);
+				auto cSampler = GetSamplerHeap(data->sample);
+				ID3D12DescriptorHeap* heaps[] = { cTexture->GetHEAP(), cSampler };
+				BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, cTexture->GetTexture());
+				comlist->SetDescriptorHeaps(1, heaps);
+				comlist->SetGraphicsRootConstantBufferView(0, c0->GetRES()->GetGPUVirtualAddress());
+				comlist->SetGraphicsRootConstantBufferView(1, c1->GetRES()->GetGPUVirtualAddress());
+				comlist->SetGraphicsRootDescriptorTable(2, cTexture->GetHEAP()->GetGPUDescriptorHandleForHeapStart());
+				comlist->SetGraphicsRootDescriptorTable(3, cSampler->GetGPUDescriptorHandleForHeapStart());
+
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, 0, 0, 0);
 			}
 			void RenderSprite(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_SPRITE* data) {
 				//インデックスバッファセット
-				{
-					//auto p = dynamic_cast<MIndex*>(data->index);
-					comlist->IASetIndexBuffer(&spriteIndexView);
-				}
+				comlist->IASetIndexBuffer(&spriteIndexView);
+
 				//頂点バッファセット
-				{
-					auto p0 = dynamic_cast<MVertex*>(data->worlds);
-					auto p1 = dynamic_cast<MVertex*>(data->texstates);
-					D3D12_VERTEX_BUFFER_VIEW VBV[] = {
-						p0->GetRD(),p1->GetRD()
-					};
-					comlist->IASetVertexBuffers(0, 2, VBV);
-				}
+				auto v0 = dynamic_cast<MVertex*>(data->worlds);
+				auto v1 = dynamic_cast<MVertex*>(data->texstates);
+				D3D12_VERTEX_BUFFER_VIEW VBV[] = {
+					v0->GetVBV(),v1->GetVBV()
+				};
+				comlist->IASetVertexBuffers(0, 2, VBV);
+
 				//定数バッファセット
-				{
-					static const UINT DcCount = 1;
-					ID3D12DescriptorHeap* pCB;
+				auto c0 = dynamic_cast<MCamPro*>(data->campro);
+				auto cTexture = dynamic_cast<MRenderResource*>(data->texture);
+				auto cSampler = GetSamplerHeap(data->sample);
+				ID3D12DescriptorHeap* heaps[] = { cTexture->GetHEAP(), cSampler };
+				BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, cTexture->GetTexture());
+				comlist->SetDescriptorHeaps(2, heaps);
+				comlist->SetGraphicsRootConstantBufferView(0, c0->GetRES()->GetGPUVirtualAddress());
+				comlist->SetGraphicsRootDescriptorTable(1, cTexture->GetHEAP()->GetGPUDescriptorHandleForHeapStart());
+				comlist->SetGraphicsRootDescriptorTable(2, cSampler->GetGPUDescriptorHandleForHeapStart());
 
-					auto p0 = dynamic_cast<MCamPro*>(data->campro);
-					pCB = p0->GetHEAP();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(0, pCB->GetGPUDescriptorHandleForHeapStart());
-
-					auto p1 = dynamic_cast<MRenderResource*>(data->texture);
-					BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, p1->GetTexture());
-					pCB = p1->GetRD();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(1, pCB->GetGPUDescriptorHandleForHeapStart());
-
-					pCB = GetSamplerHeap(data->sample);
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(2, pCB->GetGPUDescriptorHandleForHeapStart());
-				}
 				comlist->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 				comlist->DrawIndexedInstanced(1, data->InstanceCount, 0, 0, data->InstanceOffs);
 			}
 			void RenderSpriteCol(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_SPRITE_COLOR* data) {
 				//インデックスバッファセット
-				{
-					//auto p = dynamic_cast<MIndex*>(data->index);
-					comlist->IASetIndexBuffer(&spriteIndexView);
-				}
+				comlist->IASetIndexBuffer(&spriteIndexView);
+				
 				//頂点バッファセット
-				{
-					auto p0 = dynamic_cast<MVertex*>(data->worlds);
-					auto p1 = dynamic_cast<MVertex*>(data->colors);
-					auto p2 = dynamic_cast<MVertex*>(data->texstates);
-					D3D12_VERTEX_BUFFER_VIEW VBV[] = {
-						p0->GetRD(),p1->GetRD(),p2->GetRD()
-					};
-					comlist->IASetVertexBuffers(0, 3, VBV);
-				}
+				auto v0 = dynamic_cast<MVertex*>(data->worlds);
+				auto v1 = dynamic_cast<MVertex*>(data->colors);
+				auto v2 = dynamic_cast<MVertex*>(data->texstates);
+				D3D12_VERTEX_BUFFER_VIEW VBV[] = {
+					v0->GetVBV(),v1->GetVBV(),v2->GetVBV()
+				};
+				comlist->IASetVertexBuffers(0, 3, VBV);
+				
 				//定数バッファセット
-				{
-					static const UINT DcCount = 1;
-					ID3D12DescriptorHeap* pCB;
+				auto c0 = dynamic_cast<MCamPro*>(data->campro);
+				auto cTexture = dynamic_cast<MRenderResource*>(data->texture);
+				auto cSampler = GetSamplerHeap(data->sample);
+				ID3D12DescriptorHeap* heaps[] = { cTexture->GetHEAP(), cSampler };
+				BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, cTexture->GetTexture());
+				comlist->SetDescriptorHeaps(2, heaps);
+				comlist->SetGraphicsRootConstantBufferView(0, c0->GetRES()->GetGPUVirtualAddress());
+				comlist->SetGraphicsRootDescriptorTable(1, cTexture->GetHEAP()->GetGPUDescriptorHandleForHeapStart());
+				comlist->SetGraphicsRootDescriptorTable(2, cSampler->GetGPUDescriptorHandleForHeapStart());
 
-					auto p0 = dynamic_cast<MCamPro*>(data->campro);
-					pCB = p0->GetHEAP();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(0, pCB->GetGPUDescriptorHandleForHeapStart());
-
-					auto p1 = dynamic_cast<MRenderResource*>(data->texture);
-					BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, p1->GetTexture());
-					pCB = p1->GetRD();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(1, pCB->GetGPUDescriptorHandleForHeapStart());
-
-					pCB = GetSamplerHeap(data->sample);
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(2, pCB->GetGPUDescriptorHandleForHeapStart());
-				}
 				comlist->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 				comlist->DrawIndexedInstanced(1, data->InstanceCount, 0, 0, data->InstanceOffs);
 			}
 			void RenderDepth(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_DEPTH* data) {
 				//インデックスバッファセット
-				{
-					auto p = dynamic_cast<MIndex*>(data->index);
-					comlist->IASetIndexBuffer(&p->GetRD());
-				}
-				//頂点バッファセット
-				{
-					auto p0 = dynamic_cast<MVertex*>(data->positions);
-					auto p1 = dynamic_cast<MVertex*>(data->worlds);
-					D3D12_VERTEX_BUFFER_VIEW VBV[] = {
-						p0->GetRD(),p1->GetRD()
-					};
-					comlist->IASetVertexBuffers(0, 2, VBV);
-				}
-				//定数バッファセット
-				{
-					static const UINT DcCount = 1;
-					ID3D12DescriptorHeap* pCB;
+				auto i = dynamic_cast<MIndex*>(data->index);
+				comlist->IASetIndexBuffer(&i->GetIBV());
 
-					auto p0 = dynamic_cast<MCamPro*>(data->campro);
-					pCB = p0->GetHEAP();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(0, pCB->GetGPUDescriptorHandleForHeapStart());
-				}
+				//頂点バッファセット
+				auto v0 = dynamic_cast<MVertex*>(data->positions);
+				auto v1 = dynamic_cast<MVertex*>(data->worlds);
+				D3D12_VERTEX_BUFFER_VIEW VBV[] = {
+					v0->GetVBV(),v1->GetVBV()
+				};
+				comlist->IASetVertexBuffers(0, 2, VBV);
+				
+				//定数バッファセット
+				auto c0 = dynamic_cast<MCamPro*>(data->campro);
+				comlist->SetGraphicsRootConstantBufferView(0, c0->GetRES()->GetGPUVirtualAddress());
+
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, data->IndexOffs, data->VertexOffs, data->InstanceOffs);
 			}
 			void RenderShadowed(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_SHADOW* data) {
 				//インデックスバッファセット
-				{
-					auto p = dynamic_cast<MIndex*>(data->index);
-					comlist->IASetIndexBuffer(&p->GetRD());
-				}
-				//頂点バッファセット
-				{
-					auto p0 = dynamic_cast<MVertex*>(data->positions);
-					auto p1 = dynamic_cast<MVertex*>(data->colors);
-					auto p2 = dynamic_cast<MVertex*>(data->normal);
-					auto p3 = dynamic_cast<MVertex*>(data->worlds);
-					D3D12_VERTEX_BUFFER_VIEW VBV[] = {
-						p0->GetRD(),p1->GetRD(),p2->GetRD(),p3->GetRD()
-					};
-					comlist->IASetVertexBuffers(0, 4, VBV);
-				}
-				//定数バッファセット
-				{
-					static const UINT DcCount = 1;
-					ID3D12DescriptorHeap* pCB;
+				auto i = dynamic_cast<MIndex*>(data->index);
+				comlist->IASetIndexBuffer(&i->GetIBV());
 
-					auto p0 = dynamic_cast<MCamPro*>(data->campro);
-					pCB = p0->GetHEAP();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(0, pCB->GetGPUDescriptorHandleForHeapStart());
-					auto p1 = dynamic_cast<MCamPro*>(data->Llightcp);
-					pCB = p1->GetHEAP();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(1, pCB->GetGPUDescriptorHandleForHeapStart());
-					auto p2 = dynamic_cast<MLight*>(data->light);
-					pCB = p2->GetHEAP();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(2, pCB->GetGPUDescriptorHandleForHeapStart());
-					auto p3 = dynamic_cast<MRenderResource*>(data->shadow);
-					pCB = p3->GetRD();
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(3, pCB->GetGPUDescriptorHandleForHeapStart());
-					pCB = AnisotropicSampler;
-					comlist->SetDescriptorHeaps(1, &pCB);
-					comlist->SetGraphicsRootDescriptorTable(4, pCB->GetGPUDescriptorHandleForHeapStart());
-				}
+				//頂点バッファセット
+				auto v0 = dynamic_cast<MVertex*>(data->positions);
+				auto v1 = dynamic_cast<MVertex*>(data->colors);
+				auto v2 = dynamic_cast<MVertex*>(data->normal);
+				auto v3 = dynamic_cast<MVertex*>(data->worlds);
+				D3D12_VERTEX_BUFFER_VIEW VBV[] = {
+					v0->GetVBV(),v1->GetVBV(),v2->GetVBV(),v3->GetVBV()
+				};
+				comlist->IASetVertexBuffers(0, 4, VBV);
+
+				//定数バッファセット
+				auto cCam = dynamic_cast<MCamPro*>(data->campro);
+				auto cLightCam = dynamic_cast<MCamPro*>(data->Llightcp);
+				auto cLight = dynamic_cast<MLight*>(data->light);
+				auto cShadow= dynamic_cast<MRenderResource*>(data->shadow);
+				ID3D12DescriptorHeap* cShadowSampler = AnisotropicSampler;
+				ID3D12DescriptorHeap* heaps[] = { cShadow->GetHEAP(), cShadowSampler };
+				BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, cShadow->GetTexture());
+				comlist->SetDescriptorHeaps(2, heaps);
+				comlist->SetGraphicsRootConstantBufferView(0, cCam->GetRES()->GetGPUVirtualAddress());
+				comlist->SetGraphicsRootConstantBufferView(1, cLightCam->GetRES()->GetGPUVirtualAddress());
+				comlist->SetGraphicsRootConstantBufferView(2, cLight->GetRES()->GetGPUVirtualAddress());
+				comlist->SetGraphicsRootDescriptorTable(3, cShadow->GetHEAP()->GetGPUDescriptorHandleForHeapStart());
+				comlist->SetGraphicsRootDescriptorTable(4, cShadowSampler->GetGPUDescriptorHandleForHeapStart());
+				
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, data->IndexOffs, data->VertexOffs, data->InstanceOffs);
 			}
@@ -2535,7 +2336,7 @@ namespace  acex{
 
 			virtual bool ACS_TCALL UpdateTexture2D(ITexture2D* tex, const TEXTURE2D_SOURCE_INFO* uinfo, const COLOR* src)final {
 				auto p = dynamic_cast<MTexture2D*>(tex);
-				auto buf = p->GetBUF();
+				auto buf = p->GetRES();
 				acex::draw::COLOR* dest;
 				HRESULT hr = buf->Map(0, 0, (void**)&dest);
 				if (FAILED(hr))return false;
@@ -2554,7 +2355,7 @@ namespace  acex{
 			}
 			virtual bool ACS_TCALL ReadTexture2D(ITexture2D* tex, const TEXTURE2D_DEST_INFO* uinfo, COLOR* dest)final {
 				auto p = dynamic_cast<MTexture2D*>(tex);
-				auto buf = p->GetBUF();
+				auto buf = p->GetRES();
 				acex::draw::COLOR* src;
 				HRESULT hr = buf->Map(0, 0, (void**)&src);
 				if (FAILED(hr))return false;
