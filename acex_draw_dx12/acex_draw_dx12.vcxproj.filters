@@ -4,49 +4,7 @@
     <FxCompile Include="AfWorldTexVS.hlsl">
       <Filter>hlsl</Filter>
     </FxCompile>
-    <FxCompile Include="DepthPS.hlsl">
-      <Filter>hlsl</Filter>
-    </FxCompile>
-    <FxCompile Include="DepthVS.hlsl">
-      <Filter>hlsl</Filter>
-    </FxCompile>
-    <FxCompile Include="EasyVS.hlsl">
-      <Filter>hlsl</Filter>
-    </FxCompile>
-    <FxCompile Include="NormalPS.hlsl">
-      <Filter>hlsl</Filter>
-    </FxCompile>
-    <FxCompile Include="NormalTexPS.hlsl">
-      <Filter>hlsl</Filter>
-    </FxCompile>
-    <FxCompile Include="NormalWorldVS.hlsl">
-      <Filter>hlsl</Filter>
-    </FxCompile>
-    <FxCompile Include="NormalWorldTexVS.hlsl">
-      <Filter>hlsl</Filter>
-    </FxCompile>
     <FxCompile Include="PositionVS.hlsl">
-      <Filter>hlsl</Filter>
-    </FxCompile>
-    <FxCompile Include="EasyPS.hlsl">
-      <Filter>hlsl</Filter>
-    </FxCompile>
-    <FxCompile Include="ShadowMapPS.hlsl">
-      <Filter>hlsl</Filter>
-    </FxCompile>
-    <FxCompile Include="SpriteVS.hlsl">
-      <Filter>hlsl</Filter>
-    </FxCompile>
-    <FxCompile Include="SpriteGS.hlsl">
-      <Filter>hlsl</Filter>
-    </FxCompile>
-    <FxCompile Include="SpriteColVS.hlsl">
-      <Filter>hlsl</Filter>
-    </FxCompile>
-    <FxCompile Include="SpriteColGS.hlsl">
-      <Filter>hlsl</Filter>
-    </FxCompile>
-    <FxCompile Include="ShadowMapVS.hlsl">
       <Filter>hlsl</Filter>
     </FxCompile>
     <FxCompile Include="WorldColTexPS_C.hlsl">
@@ -69,6 +27,51 @@
     </FxCompile>
     <FxCompile Include="WorldColTexPS.hlsl">
       <Filter>hlsl</Filter>
+    </FxCompile>
+    <FxCompile Include="TextureVS.hlsl">
+      <Filter>hlsl</Filter>
+    </FxCompile>
+    <FxCompile Include="DepthPS.hlsl">
+      <Filter>hlsl\深度バッファリング用</Filter>
+    </FxCompile>
+    <FxCompile Include="DepthVS.hlsl">
+      <Filter>hlsl\深度バッファリング用</Filter>
+    </FxCompile>
+    <FxCompile Include="EasyPS.hlsl">
+      <Filter>hlsl\単純表示</Filter>
+    </FxCompile>
+    <FxCompile Include="EasyVS.hlsl">
+      <Filter>hlsl\単純表示</Filter>
+    </FxCompile>
+    <FxCompile Include="NormalPS.hlsl">
+      <Filter>hlsl\反射あり表示</Filter>
+    </FxCompile>
+    <FxCompile Include="NormalTexPS.hlsl">
+      <Filter>hlsl\反射あり表示</Filter>
+    </FxCompile>
+    <FxCompile Include="NormalWorldTexVS.hlsl">
+      <Filter>hlsl\反射あり表示</Filter>
+    </FxCompile>
+    <FxCompile Include="NormalWorldVS.hlsl">
+      <Filter>hlsl\反射あり表示</Filter>
+    </FxCompile>
+    <FxCompile Include="ShadowMapPS.hlsl">
+      <Filter>hlsl\シャドーマップ表示</Filter>
+    </FxCompile>
+    <FxCompile Include="ShadowMapVS.hlsl">
+      <Filter>hlsl\シャドーマップ表示</Filter>
+    </FxCompile>
+    <FxCompile Include="SpriteColGS.hlsl">
+      <Filter>hlsl\スプライト描画</Filter>
+    </FxCompile>
+    <FxCompile Include="SpriteVS.hlsl">
+      <Filter>hlsl\スプライト描画</Filter>
+    </FxCompile>
+    <FxCompile Include="SpriteGS.hlsl">
+      <Filter>hlsl\スプライト描画</Filter>
+    </FxCompile>
+    <FxCompile Include="SpriteColVS.hlsl">
+      <Filter>hlsl\スプライト描画</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
@@ -105,6 +108,21 @@
     </Filter>
     <Filter Include="ソース">
       <UniqueIdentifier>{3c43d9cf-2f90-43bb-85bb-1b213110740e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="hlsl\深度バッファリング用">
+      <UniqueIdentifier>{14dd1e95-0347-4906-a639-0d7d85ca57ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="hlsl\単純表示">
+      <UniqueIdentifier>{f31aa9b8-a682-44b2-9a95-b1a61bd807af}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="hlsl\反射あり表示">
+      <UniqueIdentifier>{be86a478-b82a-4350-910f-326bcf2b4a1c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="hlsl\シャドーマップ表示">
+      <UniqueIdentifier>{57190a43-db49-4fc8-9be3-024df1145b29}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="hlsl\スプライト描画">
+      <UniqueIdentifier>{f51faf83-ab1a-411e-bb12-3d1b82e6eba1}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

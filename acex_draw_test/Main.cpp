@@ -192,6 +192,80 @@ int test_texture() {
 
 	//ŽlŠpƒ|ƒŠƒSƒ“
 	ex::primitive::Square square(draw, ex::primitive::SQUARE_INIT_STATE{ -0.5,0.5 ,0.5,-0.5 });//left,top,right,bottom
+	acs::SIACS<acex::draw::IIWorld> world2d;
+	acs::SIACS<acex::draw::IITexState> texstate;
+	EndIfFalse(acex::draw::ex::CreateIIWorld(&world2d, draw, 1, acex::draw::RESOURCE_ACCESS_WRITE, &wor2d));
+	EndIfFalse(acex::draw::ex::CreateIITexState(&texstate, draw, 1, acex::draw::RESOURCE_ACCESS_WRITE, &DTexs));
+
+	AppBase::ScreenSetup();
+
+	while (AppBase::AppWait(10)) {
+		{
+
+			draw->Present(0);
+			if (false == draw->isEnable()) {
+				OutputDebugStringA("Draw interface disabled...\n");
+				return 0;
+			}
+
+			{
+				acex::draw::ex::Updater updater(draw);
+			}
+
+			float clearCol[] = { 0.5,0.5,0.5,0 };
+			{
+				acex::draw::ex::Drawer drawer(draw);
+				acex::draw::ITarget* d[] = { screenTarget };
+
+				//Å¬•`‰æ
+				drawer->SetTargets(1, d, screenDepth);
+				drawer->ClearTarget(0, clearCol);
+				drawer->ClearDepthStencill();
+				ex::RenderTexture(drawer, 1, 4, 4, square.getPT(), TS_LINEAR, square.getIIndex(), square.getIVPos(), square.getVUV(), world2d, squareImageResource);
+			}
+
+		};
+	}
+	draw->WaitDrawDone();
+	return 0;
+}
+
+int test_world_texture() {
+	using namespace acex::draw;
+	AppBase::ScreenSetSize({ kWindowWidth ,kWindowHeight });
+
+	acs::matrix::m4x4<> mat;
+	acs::matrix::set_camera_direction(mat, { 0,2,-10 }, { 0,-0.1f,1 }, { 0, 1, 0 });
+	memcpy(&DCamPro.cam, &mat, 64);
+	acs::matrix::set_perspectiveLH(mat, { 1, 1 }, { 1,20 });
+	memcpy(&DCamPro.pro, &mat, 64);
+
+	acs::matrix::set_camera_direction(mat, { 0,0,0 }, { 0,0,1 }, { 0, 1, 0 });
+	memcpy(&DCamPro2d.cam, &mat, 64);
+	acs::matrix::set_orthographicLH(mat, { 2, 2 }, { 0,1 });
+	memcpy(&DCamPro2d.pro, &mat, 64);
+
+	acex::draw::INIT_DESC ini;
+	ini.hWnd = AppBase::hMainWindow;
+	ini.Size = { static_cast<acs::uint>(ClientWidth) ,static_cast<acs::uint>(ClientHeight) };
+	ini.useWarpDevice = useWarp;
+	acs::SIACS<acex::draw::IDraw> draw;
+	if (!acex::draw::CreateDraw(&ini, &draw))return -1;
+	acex::draw::RESOURCE_DESC rdesc;
+	acs::SIACS<acex::draw::ITarget> screenTarget;
+	acs::SIACS<acex::draw::IDepthStencil> screenDepth;
+	acs::SIACS<acex::draw::IRenderResource> screenDepthResource;
+	if (!draw->GetScreenTarget(&screenTarget))return -1;
+	EndIfFalse(acex::draw::ex::CreateIDepthBuffer(&screenDepth, &screenDepthResource, draw, ClientWidth, ClientHeight));
+
+	acs::SIACS<acex::draw::IRenderResource> squareImageResource;
+	EndIfFalse(ex::CreateIRenderResourceM(draw, 4, 4, TCol, &squareImageResource));
+
+	acs::SIACS<acex::draw::ICamPro> campro;
+	EndIfFalse(acex::draw::ex::CreateICamPro(&campro, draw, acex::draw::RESOURCE_ACCESS_WRITE, &DCamPro));
+
+	//ŽlŠpƒ|ƒŠƒSƒ“
+	ex::primitive::Square square(draw, ex::primitive::SQUARE_INIT_STATE{ -0.5,0.5 ,0.5,-0.5 });//left,top,right,bottom
 	acs::SIACS<acex::draw::IIWorld> world;
 	acs::SIACS<acex::draw::IITexState> texstate;
 	EndIfFalse(acex::draw::ex::CreateIIWorld(&world, draw, 1, acex::draw::RESOURCE_ACCESS_WRITE, &wor));
@@ -551,5 +625,5 @@ int test_shadow() {
 }
 
 int App::Main::Func() {
-	return test_light();
+	return test_texture();
 }

@@ -18,6 +18,7 @@
 #include<new>
 #include <atomic>
 
+#include"TextureVS.h"
 #include"TexturePS.h"
 #include"TexturePS_C.h"
 #include"WorldTexVS.h"
@@ -958,7 +959,7 @@ namespace  acex{
 				break;
 			}
 		}
-		ACS_EXCEPTION_DEF(DRAW_INIT_ERR, "DRAW_INIT_ERR");
+		ACS_EXCEPTION_DEF(DRAW_INIT_ERR, "DRAW_INIT_ERR\n");
 		void GetHardwareAdapter(IDXGIFactory4* pFactory, IDXGIAdapter1** ppAdapter, D3D_FEATURE_LEVEL MiniLevel)
 		{
 			*ppAdapter = nullptr;
@@ -1004,6 +1005,7 @@ namespace  acex{
 			CHandle DrawDoneEvent;
 
 			CComPtr<ID3D12RootSignature> rootsign;//default
+			CComPtr<ID3D12RootSignature> root_tex;//default
 			CComPtr<ID3D12RootSignature> root_world;//world
 			CComPtr<ID3D12RootSignature> root_worldtex;
 			CComPtr<ID3D12RootSignature> root_norworld;
@@ -1015,6 +1017,7 @@ namespace  acex{
 			CComPtr<ID3D12RootSignature> root_shadow;
 
 			CComPtr<ID3D12PipelineState> pipe[2];
+			CComPtr<ID3D12PipelineState> pipe_tex[2];
 			CComPtr<ID3D12PipelineState> pipe_world[2];
 			CComPtr<ID3D12PipelineState> pipe_worldtex[2];
 			CComPtr<ID3D12PipelineState> pipe_worldtex_c[2];
@@ -1150,6 +1153,7 @@ namespace  acex{
 						if (FAILED(hr))throw(DRAW_INIT_ERR());
 						pdesc.DepthStencilState.DepthEnable = TRUE;
 						hr = d3device->CreateGraphicsPipelineState(&pdesc, IID_PPV_ARGS(&out[1]));
+						if (FAILED(hr))throw(DRAW_INIT_ERR());
 					};
 					auto CreatePSO_1 = [&](CComPtr<ID3D12PipelineState>* out, D3D12_GRAPHICS_PIPELINE_STATE_DESC& gps) ->void {
 						gps.DepthStencilState.DepthEnable = FALSE;
@@ -1214,7 +1218,16 @@ namespace  acex{
 							if (FAILED(hr))throw(DRAW_INIT_ERR());
 							blob.Release();
 
+							desc.NumParameters = 2;
+							desc.pParameters = &rootParameters[1];
+							hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &blob, nullptr);
+							if (FAILED(hr))throw(DRAW_INIT_ERR());
+							hr = d3device->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&root_tex));
+							if (FAILED(hr))throw(DRAW_INIT_ERR());
+							blob.Release();
+
 							desc.NumParameters = 1;
+							desc.pParameters = rootParameters;
 							hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &blob, nullptr);
 							if (FAILED(hr))throw(DRAW_INIT_ERR());
 							hr = d3device->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&root_world));
@@ -1452,6 +1465,7 @@ namespace  acex{
 
 						// PSOを作成
 
+						//def
 						{
 							D3D12_INPUT_ELEMENT_DESC elementDescs[] = {
 								{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -1468,6 +1482,24 @@ namespace  acex{
 							pdesc.PS = { EasyPS, _countof(EasyPS) };
 							CreatePSO(pipe);
 						}
+						//Tex
+						{
+							D3D12_INPUT_ELEMENT_DESC elementDescs[] = {
+							{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+							{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+							{ "WORLD", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+							{ "WORLD", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 2, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+							{ "WORLD", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 2, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+							{ "WORLD", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 2, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+							};
+
+							pdesc.InputLayout = { elementDescs, _countof(elementDescs) };
+							pdesc.pRootSignature = root_tex;
+							pdesc.VS = { TextureVS, _countof(TextureVS) };
+							pdesc.PS = { TexturePS, _countof(TexturePS) };
+							CreatePSO(pipe_tex);
+						}
+						//world
 						{
 							D3D12_INPUT_ELEMENT_DESC elementDescs[] = {
 								{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -1484,6 +1516,7 @@ namespace  acex{
 							pdesc.PS = { EasyPS, _countof(EasyPS) };
 							CreatePSO(pipe_world);
 						}
+						//WorldTex
 						{
 							D3D12_INPUT_ELEMENT_DESC elementDescs[] = {
 								{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -2045,6 +2078,10 @@ namespace  acex{
 					SET_LINE(rootsign, pipe[RenderPipelineMode]);
 					RenderDef(comlist, static_cast<const RENDER_DATA_DEFAULT*>(RenderData));
 					break;
+				case RM_TEXTURE:
+					SET_LINE(root_tex, pipe_tex[RenderPipelineMode]);
+					RenderTexture(comlist, static_cast<const RENDER_DATA_TEXTURE*>(RenderData));
+					break;
 				case RM_WORLD:
 					SET_LINE(root_world, pipe_world[RenderPipelineMode]);
 					RenderWorld(comlist, static_cast<const RENDER_DATA_WORLD*>(RenderData));
@@ -2116,6 +2153,39 @@ namespace  acex{
 						p0->GetRD(),p1->GetRD(),p2->GetRD()
 					};
 					comlist->IASetVertexBuffers(0, 3, VBV);
+				}
+				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
+				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, 0, 0, 0);
+			}
+			void RenderTexture(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_TEXTURE* data) {
+				//インデックスバッファセット
+				{
+					auto p = dynamic_cast<MIndex*>(data->index);
+					comlist->IASetIndexBuffer(&p->GetRD());
+				}
+				//頂点バッファセット
+				{
+					auto p0 = dynamic_cast<MVertex*>(data->positions);
+					auto p1 = dynamic_cast<MVertex*>(data->uvs);
+					auto p2 = dynamic_cast<MVertex*>(data->worlds);
+					D3D12_VERTEX_BUFFER_VIEW VBV[3] = {
+						p0->GetRD(),p1->GetRD(),p2->GetRD()
+					};
+					comlist->IASetVertexBuffers(0, 3, VBV);
+				}
+				//定数バッファセット
+				{
+					auto p0 = dynamic_cast<MRenderResource*>(data->texture);
+					ID3D12DescriptorHeap* pCB;
+
+					BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, p0->GetTexture());
+					pCB = p0->GetRD();
+					comlist->SetDescriptorHeaps(1, &pCB);
+					comlist->SetGraphicsRootDescriptorTable(0, pCB->GetGPUDescriptorHandleForHeapStart());
+
+					pCB = GetSamplerHeap(data->sample);
+					comlist->SetDescriptorHeaps(1, &pCB);
+					comlist->SetGraphicsRootDescriptorTable(1, pCB->GetGPUDescriptorHandleForHeapStart());
 				}
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, 0, 0, 0);

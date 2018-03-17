@@ -308,6 +308,22 @@ namespace acex {
 				acex::draw::RENDER_DATA_DEFAULT data = { InstanceCount ,VertexCount ,IndexCount ,topology,index,positions,colors,worlds };
 				Draw->Draw(acex::draw::RM_DEFAULT, &data);
 			}
+			inline void RenderTexture(
+				acex::draw::IDrawer* Draw,
+				uint32_t InstanceCount,
+				uint32_t VertexCount,
+				uint32_t IndexCount,
+				acex::draw::PRIMITIVE_TOPOLOGY topology,
+				acex::draw::TEXSAMPLE_MODE sample,
+				acex::draw::IIndex* index,
+				acex::draw::IVPosition* positions,
+				acex::draw::IVUv* uvs,
+				acex::draw::IIWorld* worlds,
+				acex::draw::IRenderResource* texture
+			) {
+				acex::draw::RENDER_DATA_TEXTURE data = { InstanceCount ,VertexCount ,IndexCount ,topology,sample,index,positions,uvs,worlds,texture };
+				Draw->Draw(acex::draw::RM_TEXTURE, &data);
+			}
 			inline void RenderWorld(
 				acex::draw::IDrawer* Draw,
 				uint32_t InstanceCount,

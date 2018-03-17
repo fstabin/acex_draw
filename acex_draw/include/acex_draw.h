@@ -96,6 +96,7 @@ namespace  acex {
 			RM_NONE = 0,
 
 			RM_DEFAULT = 1,//RENDER_DATA_DEFAULT
+			RM_TEXTURE = 2,//RENDER_DATA_TEXTURE
 
 			//2D•`‰æ
 
@@ -127,6 +128,18 @@ namespace  acex {
 			IVPosition* positions;
 			IVColor* colors;
 			IIWorld* worlds;
+		};
+		struct RENDER_DATA_TEXTURE {
+			uintValue InstanceCount;
+			uintValue VertexCount;
+			uintValue IndexCount;
+			PRIMITIVE_TOPOLOGY topology;
+			TEXSAMPLE_MODE sample;
+			IIndex* index;
+			IVPosition* positions;
+			IVUv* uvs;
+			IIWorld* worlds;
+			IRenderResource* texture;
 		};
 		struct RENDER_DATA_WORLD {
 			uintValue InstanceCount;

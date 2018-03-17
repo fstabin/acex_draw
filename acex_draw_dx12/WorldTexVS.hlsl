@@ -17,7 +17,7 @@ struct VSOutput
 cbuffer CBScene : register(b0)
 {
 	float4x4 cam;
-		float4x4	pro;
+	float4x4	pro;
 };
 
 VSOutput main(VSInput In)
