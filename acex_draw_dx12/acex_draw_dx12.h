@@ -2068,18 +2068,18 @@ namespace  acex{
 					comlist->IASetVertexBuffers(0, 3, VBV);
 				}
 				//定数バッファセット
-				{
-					auto p0 = dynamic_cast<MRenderResource*>(data->texture);
-					auto p1 = GetSamplerHeap(data->sample);
-					ID3D12DescriptorHeap* heaps[] = { p0->GetHEAP(), p1};
+				auto cTexture = dynamic_cast<MRenderResource*>(data->texture);
+				auto cSampler = GetSamplerHeap(data->sample);
+				ID3D12DescriptorHeap* heaps[] = { cTexture->GetHEAP(), cSampler };
 
-					BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, p0->GetTexture());
-					comlist->SetDescriptorHeaps(2, heaps);
-					comlist->SetGraphicsRootDescriptorTable(0, p0->GetHEAP()->GetGPUDescriptorHandleForHeapStart());
-					comlist->SetGraphicsRootDescriptorTable(1, p1->GetGPUDescriptorHandleForHeapStart());
-				}
+				BarrierSet(comlist, D3D12_RESOURCE_STATE_GENERIC_READ, cTexture->GetTexture());
+				comlist->SetDescriptorHeaps(2, heaps);
+				comlist->SetGraphicsRootDescriptorTable(0, cTexture->GetHEAP()->GetGPUDescriptorHandleForHeapStart());
+				comlist->SetGraphicsRootDescriptorTable(1, cSampler->GetGPUDescriptorHandleForHeapStart());
+
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, 0, 0, 0);
+				BarrierSet(comlist, D3D12_RESOURCE_STATE_COMMON, cTexture->GetTexture());//ここでバリアを張らないとGPUが間違って読み込むことがある,そして次の描画で変に表示される(要検証)
 			}
 			void RenderWorld(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_WORLD* data) {
 				//インデックスバッファセット
@@ -2131,6 +2131,7 @@ namespace  acex{
 
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, 0, 0, 0);
+				BarrierSet(comlist, D3D12_RESOURCE_STATE_COMMON, cTexture->GetTexture());
 			}
 			void RenderWorldTex(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_WORLD_TEX* data) {
 				//インデックスバッファセット
@@ -2160,6 +2161,7 @@ namespace  acex{
 
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, 0, 0, 0);
+				BarrierSet(comlist, D3D12_RESOURCE_STATE_COMMON, cTexture->GetTexture());
 			}
 			void RenderNormalWorld(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_NORMAL_WORLD* data) {
 				//インデックスバッファセット
@@ -2217,6 +2219,7 @@ namespace  acex{
 
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, 0, 0, 0);
+				BarrierSet(comlist, D3D12_RESOURCE_STATE_COMMON, cTexture->GetTexture());
 			}
 			void RenderSprite(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_SPRITE* data) {
 				//インデックスバッファセット
@@ -2243,6 +2246,7 @@ namespace  acex{
 
 				comlist->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 				comlist->DrawIndexedInstanced(1, data->InstanceCount, 0, 0, data->InstanceOffs);
+				BarrierSet(comlist, D3D12_RESOURCE_STATE_COMMON, cTexture->GetTexture());
 			}
 			void RenderSpriteCol(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_SPRITE_COLOR* data) {
 				//インデックスバッファセット
@@ -2270,6 +2274,7 @@ namespace  acex{
 
 				comlist->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 				comlist->DrawIndexedInstanced(1, data->InstanceCount, 0, 0, data->InstanceOffs);
+				BarrierSet(comlist, D3D12_RESOURCE_STATE_COMMON, cTexture->GetTexture());
 			}
 			void RenderDepth(ID3D12GraphicsCommandList* comlist, const RENDER_DATA_DEPTH* data) {
 				//インデックスバッファセット
@@ -2323,6 +2328,7 @@ namespace  acex{
 				
 				comlist->IASetPrimitiveTopology(CVPRIM(data->topology));
 				comlist->DrawIndexedInstanced(data->IndexCount, data->InstanceCount, data->IndexOffs, data->VertexOffs, data->InstanceOffs);
+				BarrierSet(comlist, D3D12_RESOURCE_STATE_COMMON, cShadow->GetTexture());
 			}
 
 			virtual bool ACS_TCALL Map(IResource* res, void** out) final {
