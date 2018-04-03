@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <memory>
+#include <limits>
 
 #include "acs\include\vector.h"
 #include "acs\include\matrix.h"
@@ -37,7 +38,7 @@ namespace acex {
 						acex::draw::RESOURCE_DESC rdesc;
 						{
 							acex::draw::INSTANCEBUFFER_DESC mdesc;
-							if (a_size > acs::MaxValue<decltype(mdesc.ArraySize)>())throw(ACEXDrawExCreateResourceFailedException("sprite  constracter:a_size is invalid value"));
+							if (a_size > std::numeric_limits<decltype(mdesc.ArraySize)>::max())throw(ACEXDrawExCreateResourceFailedException("sprite  constracter:a_size is invalid value"));
 							mdesc.ArraySize = static_cast<decltype(mdesc.ArraySize)>(a_size);//‰Šú‰»‚É m_size ‚Ì‘å‚«‚³•Ûá
 							rdesc.desc = &mdesc;
 							rdesc.AccessFlag = acex::draw::RESOURCE_ACCESS_WRITE;
