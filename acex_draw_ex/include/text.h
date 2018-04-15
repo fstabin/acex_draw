@@ -137,7 +137,7 @@ namespace acex {
 						//描画リソース作成
 						acs::SIACS<acex::draw::IRenderResource> rs;
 						if (!createImageFromBMP(draw, hbit, w, h, cut, bcol, &rs))return false;
-						oRS = new FontImage(rs, codes, wlet, hlet);
+						oRS = new FontImage(rs, std::move(codes), wlet, hlet);
 						return true;
 					}
 				public:
@@ -155,10 +155,11 @@ namespace acex {
 						{
 							m.insert(std::make_pair(text[i], i));
 						}
-						return CreateFontImage(oRS, draw, font, chara, back, m);
+						return CreateFontImage(oRS, draw, font, chara, back, m, cut);
 					}
 
 					//フォントイメージ作成
+					/*
 					bool CreateFontImage(
 						FontImage*& oRS,
 						acex::draw::IDraw* draw,
@@ -179,6 +180,7 @@ namespace acex {
 						}
 						return CreateFontImage(oRS, draw, font, chara, back, m);
 					}
+					*/
 
 					HDC getDC() {
 						return dc;
@@ -204,10 +206,10 @@ namespace acex {
 					}
 
 				public:
-					ACS_NO_COPY(ImageText);
-					explicit ImageText(acex::draw::IDraw* draw, FontImage* fontimg, size_t capacity) :m_sprite(draw, capacity), m_image(fontimg) {
+					explicit ImageText(acex::draw::IDraw* draw, FontImage* fontimg, size_t capacity) 
+						:m_sprite(draw, capacity), m_image(fontimg) {
 						m_sprite.setRenderResource(fontimg->getRenderResource());
-						m_sprite.setSamplerMode(acex::draw::TS_LINEAR);
+						m_sprite.setSamplerMode(acex::draw::TS_POINT);
 						setTextColor({ 1,1,1,1 });
 					}
 

@@ -48,36 +48,41 @@ namespace acex {
 
 				//フォントイメージ（リソース）
 				class FontImage {
-					acs::SIACS<acex::draw::IRenderResource> resource;
-					size_t slen;
-					std::unordered_map<wchar_t, size_t> char_offset;
-					size_t wid, hei;
+					acs::SIACS<acex::draw::IRenderResource> mrImage;
+					size_t mUseCharCnt;
+					std::unordered_map<wchar_t, size_t> mCharOffs;
+					size_t mCharRowLen, mCharRowAmount;
 				public:
-					FontImage(acex::draw::IRenderResource* res, const wchar_t* str, size_t strlen, size_t w, size_t h) :resource(res), slen(strlen), wid(w), hei(h) {
-						for (size_t i = 0; i < strlen; i++)
+					FontImage(acex::draw::IRenderResource* rImage, const wchar_t* useChars, size_t useCharCnt, size_t charRowLen, size_t charRowAmount) 
+						:mrImage(rImage), mUseCharCnt(useCharCnt), mCharRowLen(charRowLen), mCharRowAmount(charRowAmount) {
+						mCharOffs.reserve(mUseCharCnt);
+						for (size_t i = 0; i < mUseCharCnt; i++)
 						{
-							char_offset[str[i]] = i;
+							mCharOffs[useChars[i]] = i;
 						}
 					}
-					FontImage(acex::draw::IRenderResource* res, std::unordered_map<wchar_t, size_t>& m, size_t w, size_t h) :resource(res), wid(w), hei(h) {
-						m.swap(char_offset);
-						slen = char_offset.size();
+					FontImage(acex::draw::IRenderResource* rImage, std::unordered_map<wchar_t, size_t>&& useCharOffsMap, size_t w, size_t h)
+						:mCharOffs(useCharOffsMap), mrImage(rImage), mCharRowLen(w), mCharRowAmount(h) {
+							mUseCharCnt = mCharOffs.size();
 					}
 
 					acex::draw::IRenderResource* getRenderResource() {
-						return resource;
+						return mrImage;
 					}
 
 					//画像の文字のオフセット計算
 					//文字がないときfalse
 					bool calcTexstate(wchar_t c, acex::draw::INS_TEXSTATE& ts) {
-						auto index = char_offset.find(c);
-						if (index == char_offset.end())return false;
-						size_t x = index->second % wid;
-						size_t y = index->second / wid;
-						ts = { ((float)x + 0.0001f) / (float)wid, ((float)y + 0.0001f) / (float)hei, 0.9998f / (float)wid,  0.9998f / (float)hei };
+						auto index = mCharOffs.find(c);
+						if (index == mCharOffs.end())return false;
+						size_t x = index->second % mCharRowLen;
+						size_t y = index->second / mCharRowLen;
+						ts = { ((float)x + 0.0001f) / (float)mCharRowLen, ((float)y + 0.0001f) / (float)mCharRowAmount, 0.9998f / (float)mCharRowLen,  0.9998f / (float)mCharRowAmount };
 						return true;
 					}
+				
+					size_t getCharRowLen()const { return mCharRowLen; };
+					size_t getCharRowAmount() const{ return mCharRowAmount; }
 				};
 
 				enum ALIGN_MODE : acs::byte {

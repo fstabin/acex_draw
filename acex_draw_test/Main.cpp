@@ -153,6 +153,7 @@ int test_poligon() {
 
 		};
 	}
+	draw->WaitDrawDone();
 	return 0;
 }
 
@@ -624,6 +625,90 @@ int test_shadow() {
 	return 0;
 }
 
+int test_text() {
+	using namespace acex::draw;
+	AppBase::ScreenSetSize({ kWindowWidth ,kWindowHeight });
+
+	acs::matrix::m4x4<> mat;
+
+	acs::matrix::set_camera_direction(mat, { 0,0,0 }, { 0,0,1 }, { 0, 1, 0 });
+	memcpy(&DCamPro2d.cam, &mat, 64);
+	acs::matrix::set_orthographicLH(mat, { 2, 2 }, { 0,1 });
+	memcpy(&DCamPro2d.pro, &mat, 64);
+
+	acex::draw::INIT_DESC ini;
+	ini.hWnd = AppBase::hMainWindow;
+	ini.Size = { static_cast<acs::uint>(ClientWidth) ,static_cast<acs::uint>(ClientHeight) };
+	ini.useWarpDevice = useWarp;
+	acs::SIACS<acex::draw::IDraw> draw;
+	if (!acex::draw::CreateDraw(&ini, &draw))return -1;
+	acs::SIACS<acex::draw::ITarget> screenTarget;
+	acs::SIACS<acex::draw::IDepthStencil> screenDepth;
+	if (!draw->GetScreenTarget(&screenTarget))return -1;
+	EndIfFalse(acex::draw::ex::CreateIDepthStencil(&screenDepth, draw, ClientWidth, ClientHeight));
+
+	acex::draw::ex::Camera cam2D(draw);
+	cam2D.setmode(ex::CM_2D);
+	cam2D.setpos({0, 0, 0});
+	cam2D.setsize({ static_cast<float>(kWindowWidth) ,static_cast<float>(kWindowHeight) });
+	cam2D.setdirection({ 0,0,1 });
+	cam2D.setup({ 0,1,0 });
+	cam2D.setzrange({0,1});
+
+	ex::text::TextImageFactory tiFact(draw);
+	std::unique_ptr<ex::text::FontImage> fimg;
+	ex::text::Font font(&tiFact, 16, L"ƒƒCƒŠƒI");
+	ex::text::Brush colChara(255, 255, 255);
+	ex::text::Brush colBack(0, 0,0);
+	ex::text::FontImage* tfimg;
+	tiFact.CreateFontImage(tfimg, draw, &font, &colChara, &colBack, L"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ‚ ‚¢‚¤‚¦‚¨‚©‚«‚­‚¯‚±‚³‚µ‚·‚¹‚»‚½‚¿‚Â‚Ä‚Æ‚È‚É‚Ê‚Ë‚Ì‚Í‚Ð‚Ó‚Ö‚Ù‚Ü‚Ý‚Þ‚ß‚à‚â‚ä‚æ‚ç‚è‚é‚ê‚ë‚í‚ð‚ñ‚ª‚¬‚®‚°‚²‚´‚¶‚¸‚º‚¼‚¾‚À‚Ã‚Å‚Ç‚Î‚Ñ‚Ô‚×‚Ú‚Ï‚Ò‚Õ‚Ø‚Û @", 126, true);
+	fimg.reset(tfimg);
+	ex::text::ImageText itext(draw, fimg.get(), 30);
+	itext.setCamera(cam2D);
+	itext.setLetterSize(32);
+	itext.setPos({ -200,-30,0 });
+	itext.setText(L"Hello world!! ‚Ù‚°‚Ù‚°");
+	itext.setTextColor({1.f,0.6f,0.3f,1.f});
+	//itext.setTextDisplayLength(1);
+	ex::sprite::SimpleSprite sp(draw, 1, cam2D, fimg->getRenderResource());
+	sp[0] = { true, {0,0,0}, { static_cast<float>(tfimg->getCharRowLen()) * 16, static_cast<float>(tfimg->getCharRowAmount()) * 16 },{0,0,0},	{0,0,1,1} };
+
+	AppBase::ScreenSetup();
+
+	while (AppBase::AppWait(10)) {
+		{
+
+			draw->Present(0);
+			if (false == draw->isEnable()) {
+				OutputDebugStringA("Draw interface disabled...\n");
+				return 0;
+			}
+
+			{
+				acex::draw::ex::Updater updater(draw);
+				cam2D.Update(updater);
+				itext.Update(updater);
+				sp.Update(updater);
+			}
+
+			float clearCol[] = { 0.5,0.5,0.5,0 };
+			{
+				acex::draw::ex::Drawer drawer(draw);
+				acex::draw::ITarget* d[] = { screenTarget };
+
+				drawer->SetTargets(1, d, screenDepth);
+				drawer->ClearTarget(0, clearCol);
+				drawer->ClearDepthStencill();
+				itext.Draw(drawer);
+				sp.Draw(drawer);
+			}
+
+		};
+	}
+	draw->WaitDrawDone();
+	return 0;
+}
+
 int App::Main::Func() {
-	return test_shadow();
+	return test_text();
 }

@@ -27,9 +27,6 @@ namespace acex {
 				acs::vector::f2d Znearfar;
 
 			public:
-				Camera() {
-
-				}
 				Camera(acex::draw::IDraw* draw) {
 					if (!acex::draw::ex::CreateICamPro(&iCameraMap, draw, acex::draw::RESOURCE_ACCESS_WRITE, nullptr))throw(ACEXDrawExCreateResourceFailedException());
 				}
@@ -112,11 +109,14 @@ namespace acex {
 					return parents;
 				}
 
-				_icp Ptr()const noexcept {
+				_icp Ptr()const{
+#if _DEBUG
+					if (iCameraMap == nullptr)throw ACEXDrawExResourceNotInitedException();
+#endif
 					return iCameraMap;
 				}
-				operator _icp()const noexcept {
-					return iCameraMap;
+				operator _icp()const {
+					return Ptr();
 				}
 				_icp* operator&() noexcept {
 #if _DEBUG
@@ -125,7 +125,7 @@ namespace acex {
 					return &iCameraMap;
 				}
 				_icp operator-> ()const noexcept {
-					return iCameraMap;
+					return Ptr();
 				}
 			};
 		}

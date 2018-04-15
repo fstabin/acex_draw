@@ -204,6 +204,10 @@ namespace acex {
 						states[index] = stat;
 					}
 
+					acex::draw::IVColor* getVColor()const noexcept {
+						return m_color;
+					}
+
 					virtual void Draw(acex::draw::IDrawer* context) {
 						if (!this->isEnable()) { return; }
 						RenderSpriteColor(context, static_cast<uint32_t>(this->getSize()), this->getSamplerMode(), this->getWorld(), m_color, this->getTexState(), this->getCamera(), this->getRenderResource());
@@ -211,7 +215,7 @@ namespace acex {
 					virtual void Update(acex::draw::IUpdater* pupd) {
 						acex::draw::ex::Mapped<acex::draw::INS_WORLD>pworld(pupd, this->getWorld());
 						acex::draw::ex::Mapped<acex::draw::INS_TEXSTATE>ptexs(pupd, this->getTexState());
-						acex::draw::ex::Mapped<acex::draw::VERTEX_COLOR>pcol(pupd, this->getTexState());
+						acex::draw::ex::Mapped<acex::draw::VERTEX_COLOR>pcol(pupd, this->getVColor());
 						for (size_t i = 0; i < getSize(); i++)
 						{
 							auto& ref = states[i];

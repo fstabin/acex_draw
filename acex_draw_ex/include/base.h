@@ -14,6 +14,8 @@ namespace acex {
 			ACS_EXCEPTION_DEF1(ACEXDrawExInitFailedException, "acex::drawInitFailed", ACEXDrawExException);
 			ACS_EXCEPTION_DEF1(ACEXDrawExCreateResourceFailedException, "acex::drawExCreateResourceFailed", ACEXDrawExException);
 
+			ACS_EXCEPTION_DEF1(ACEXDrawExResourceNotInitedException, "acex::ExResourceNotInited", ACEXDrawExException);
+
 			ACS_EXCEPTION_DEF1(ACEXDrawExInvalidValueException, "acex::drawExInvalidValue", ACEXDrawExException);
 			ACS_EXCEPTION_DEF1(ACEXDrawExValueTooLargeException, "acex::drawExValueTooLarge", ACEXDrawExInvalidValueException);
 			ACS_EXCEPTION_DEF1(ACEXDrawExValueTooSmallException, "acex::drawExValueTooSmall", ACEXDrawExInvalidValueException);
