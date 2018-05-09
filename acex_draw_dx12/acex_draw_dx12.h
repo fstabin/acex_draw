@@ -304,8 +304,8 @@ namespace  acex{
 				sd.Flags = 0;
 
 				DXGI_SWAP_CHAIN_FULLSCREEN_DESC sfd;
-				sfd.RefreshRate.Numerator = 1;
-				sfd.RefreshRate.Denominator = 60;
+				sfd.RefreshRate.Numerator = 0;
+				sfd.RefreshRate.Denominator = 1;
 				sfd.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 				sfd.Scaling = DXGI_MODE_SCALING_CENTERED;
 				sfd.Windowed = true;
@@ -1637,6 +1637,7 @@ namespace  acex{
 				::DescriptorSize_RTV
 					= d3device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 				{
+					//描画ターゲット(ウィンドウ)作成
 					target.Attach(new MScreenTarget(DxFact, d3device, comque, desc));
 				}
 
